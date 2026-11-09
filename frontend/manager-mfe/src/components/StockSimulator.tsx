@@ -1,13 +1,16 @@
 import {
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
-import type {
-  UpdateStockHandler,
-} from "../types/manager";
+export type StockSimulationUpdate = {
+  title: string;
 
-type Props = {
+  cause: string;
+};
+
+export type StockSimulatorProps = {
   productId: string;
 
   productName: string;
@@ -24,8 +27,14 @@ type Props = {
 
   resetVersion: number;
 
-  onUpdateStock:
-    UpdateStockHandler;
+  onUpdateStock: (
+    productId: string,
+    locationCode: string,
+    availableQuantity: number,
+    reservedQuantity: number,
+    reorderLevel: number,
+    update: StockSimulationUpdate
+  ) => Promise<void>;
 };
 
 function StockSimulator({
@@ -38,7 +47,7 @@ function StockSimulator({
   initialReorderLevel,
   resetVersion,
   onUpdateStock,
-}: Props) {
+}: StockSimulatorProps) {
   const [
     availableQuantity,
     setAvailableQuantity,
@@ -64,19 +73,28 @@ function StockSimulator({
     );
 
   const [
-    applying,
-    setApplying,
-  ] =
-    useState(false);
-
-  const [
     error,
     setError,
   ] =
     useState("");
 
+  const [
+    saving,
+    setSaving,
+  ] =
+    useState(false);
+
+  /*
+   * resetVersion is an explicit synchronization
+   * signal sent by the shell after Reset Demo.
+   *
+   * Local simulator values intentionally need to
+   * synchronize with the new baseline values here.
+   */
   useEffect(
     () => {
+      /* eslint-disable react-hooks/set-state-in-effect */
+
       setAvailableQuantity(
         initialAvailableQuantity
       );
@@ -89,50 +107,164 @@ function StockSimulator({
         initialReorderLevel
       );
 
-      setError(
-        ""
-      );
+      setError("");
+
+      /* eslint-enable react-hooks/set-state-in-effect */
     },
     [
+      resetVersion,
       initialAvailableQuantity,
       initialReservedQuantity,
       initialReorderLevel,
-      resetVersion,
     ]
   );
 
   const availableToSell =
-    Math.max(
-      0,
-      availableQuantity -
-      reservedQuantity
+    useMemo(
+      () =>
+        Math.max(
+          0,
+          availableQuantity -
+            reservedQuantity
+        ),
+      [
+        availableQuantity,
+        reservedQuantity,
+      ]
     );
+
+  function handleAvailableChange(
+    value: string
+  ): void {
+    const parsedValue =
+      Number(value);
+
+    if (
+      Number.isNaN(
+        parsedValue
+      )
+    ) {
+      setAvailableQuantity(
+        0
+      );
+
+      return;
+    }
+
+    setAvailableQuantity(
+      parsedValue
+    );
+
+    setError("");
+  }
+
+  function handleReservedChange(
+    value: string
+  ): void {
+    const parsedValue =
+      Number(value);
+
+    if (
+      Number.isNaN(
+        parsedValue
+      )
+    ) {
+      setReservedQuantity(
+        0
+      );
+
+      return;
+    }
+
+    setReservedQuantity(
+      parsedValue
+    );
+
+    setError("");
+  }
+
+  function handleReorderLevelChange(
+    value: string
+  ): void {
+    const parsedValue =
+      Number(value);
+
+    if (
+      Number.isNaN(
+        parsedValue
+      )
+    ) {
+      setReorderLevel(
+        0
+      );
+
+      return;
+    }
+
+    setReorderLevel(
+      parsedValue
+    );
+
+    setError("");
+  }
+
+  function handleOutOfStock():
+    void {
+    setAvailableQuantity(
+      0
+    );
+
+    setReservedQuantity(
+      0
+    );
+
+    setError("");
+  }
+
+  function handleRestoreValues():
+    void {
+    setAvailableQuantity(
+      initialAvailableQuantity
+    );
+
+    setReservedQuantity(
+      initialReservedQuantity
+    );
+
+    setReorderLevel(
+      initialReorderLevel
+    );
+
+    setError("");
+  }
 
   async function handleApply():
     Promise<void> {
     if (
-      !Number.isInteger(
-        availableQuantity
-      )
-      ||
       availableQuantity < 0
     ) {
       setError(
-        "Available quantity must be a non-negative whole number."
+        "Available quantity cannot be negative."
       );
 
       return;
     }
 
     if (
-      !Number.isInteger(
-        reservedQuantity
-      )
-      ||
       reservedQuantity < 0
     ) {
       setError(
-        "Reserved quantity must be a non-negative whole number."
+        "Reserved quantity cannot be negative."
+      );
+
+      return;
+    }
+
+    if (
+      reorderLevel < 0
+    ) {
+      setError(
+        "Reorder level cannot be negative."
       );
 
       return;
@@ -149,28 +281,10 @@ function StockSimulator({
       return;
     }
 
-    if (
-      !Number.isInteger(
-        reorderLevel
-      )
-      ||
-      reorderLevel < 0
-    ) {
-      setError(
-        "Reorder level must be a non-negative whole number."
-      );
-
-      return;
-    }
-
     try {
-      setApplying(
-        true
-      );
+      setSaving(true);
 
-      setError(
-        ""
-      );
+      setError("");
 
       await onUpdateStock(
         productId,
@@ -184,20 +298,19 @@ function StockSimulator({
 
           cause:
             `${productName} stock at ${locationName} ` +
-            `was changed to ${availableQuantity} available ` +
-            `and ${reservedQuantity} reserved.`,
+            `changed to ${availableQuantity} available, ` +
+            `${reservedQuantity} reserved and ` +
+            `${reorderLevel} reorder level.`,
         }
       );
-    } catch (updateError) {
+    } catch (requestError) {
       setError(
-        updateError instanceof Error
-          ? updateError.message
-          : "Unable to update stock."
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to update inventory."
       );
     } finally {
-      setApplying(
-        false
-      );
+      setSaving(false);
     }
   }
 
@@ -220,8 +333,8 @@ function StockSimulator({
       </div>
 
       <p className="manager-card-description">
-        Change product inventory and observe
-        how complete-basket eligibility changes.
+        Change product inventory and observe how
+        complete-basket eligibility changes.
       </p>
 
       <div className="manager-stock-context">
@@ -243,19 +356,14 @@ function StockSimulator({
           <input
             type="number"
             min={0}
-            value={availableQuantity}
+            value={
+              availableQuantity
+            }
             onChange={
-              event => {
-                setAvailableQuantity(
-                  Number(
-                    event.target.value
-                  )
-                );
-
-                setError(
-                  ""
-                );
-              }
+              event =>
+                handleAvailableChange(
+                  event.target.value
+                )
             }
           />
         </label>
@@ -268,19 +376,14 @@ function StockSimulator({
           <input
             type="number"
             min={0}
-            value={reservedQuantity}
+            value={
+              reservedQuantity
+            }
             onChange={
-              event => {
-                setReservedQuantity(
-                  Number(
-                    event.target.value
-                  )
-                );
-
-                setError(
-                  ""
-                );
-              }
+              event =>
+                handleReservedChange(
+                  event.target.value
+                )
             }
           />
         </label>
@@ -293,19 +396,14 @@ function StockSimulator({
           <input
             type="number"
             min={0}
-            value={reorderLevel}
+            value={
+              reorderLevel
+            }
             onChange={
-              event => {
-                setReorderLevel(
-                  Number(
-                    event.target.value
-                  )
-                );
-
-                setError(
-                  ""
-                );
-              }
+              event =>
+                handleReorderLevelChange(
+                  event.target.value
+                )
             }
           />
         </label>
@@ -321,23 +419,23 @@ function StockSimulator({
         </div>
       </div>
 
+      {error && (
+        <div
+          className="manager-error-message"
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
+
       <div className="manager-preset-row">
         <button
           type="button"
           onClick={
-            () => {
-              setAvailableQuantity(
-                0
-              );
-
-              setReservedQuantity(
-                0
-              );
-
-              setError(
-                ""
-              );
-            }
+            handleOutOfStock
+          }
+          disabled={
+            saving
           }
         >
           Out of stock
@@ -346,49 +444,28 @@ function StockSimulator({
         <button
           type="button"
           onClick={
-            () => {
-              setAvailableQuantity(
-                initialAvailableQuantity
-              );
-
-              setReservedQuantity(
-                initialReservedQuantity
-              );
-
-              setReorderLevel(
-                initialReorderLevel
-              );
-
-              setError(
-                ""
-              );
-            }
+            handleRestoreValues
+          }
+          disabled={
+            saving
           }
         >
           Restore values
         </button>
       </div>
 
-      {error && (
-        <div
-          className="manager-error"
-          role="alert"
-        >
-          {error}
-        </div>
-      )}
-
       <button
         type="button"
         className="manager-primary-button"
-        disabled={
-          applying
-        }
         onClick={
-          handleApply
+          () =>
+            void handleApply()
+        }
+        disabled={
+          saving
         }
       >
-        {applying
+        {saving
           ? "Applying..."
           : "Apply Stock & Recalculate"}
       </button>

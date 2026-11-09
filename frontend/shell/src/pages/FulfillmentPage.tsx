@@ -428,12 +428,22 @@ function FulfillmentPage() {
     }
   }
 
+/*
+ * Initial deterministic fulfillment calculation.
+ *
+ * loadDecision intentionally synchronizes the shell
+ * with FulfillmentService and updates local loading,
+ * error and decision state.
+ */
+
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(
     () => {
       void loadDecision();
     },
     [loadDecision]
   );
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const hyd03 =
     useMemo(
