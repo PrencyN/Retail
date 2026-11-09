@@ -1,0 +1,383 @@
+@host = http://localhost:5143
+
+
+###########################################################
+# 1. PUBLIC HEALTH CHECK
+#
+# Expected:
+# HTTP 200
+###########################################################
+
+GET {{host}}/
+Accept: application/json
+
+
+###########################################################
+# 2. AUTH USER - NO TOKEN
+#
+# Expected:
+# HTTP 401 Unauthorized
+###########################################################
+
+GET {{host}}/api/auth/me
+Accept: application/json
+
+
+###########################################################
+# 3. AUTH USER - INVALID TOKEN
+#
+# Expected:
+# HTTP 401 Unauthorized
+###########################################################
+
+GET {{host}}/api/auth/me
+Authorization: Bearer invalid-token
+Accept: application/json
+
+
+###########################################################
+# 4. AI EXPLANATION - NO TOKEN
+#
+# Expected:
+# HTTP 401 Unauthorized
+###########################################################
+
+POST {{host}}/api/ai/explain
+Content-Type: application/json
+Accept: application/json
+
+{
+  "orderReference": "SYN-1001",
+  "recommendedLocationCode": "HYD-03",
+  "recommendedLocationName": "Kukatpally Store",
+  "winningScore": 69.64,
+  "deterministicExplanation": "Kukatpally Store was selected even though Hitech City Store is closer.",
+  "question": "Why was the nearest store not selected?",
+  "candidates": [
+    {
+      "rank": 1,
+      "locationCode": "HYD-03",
+      "locationName": "Kukatpally Store",
+      "eligible": true,
+      "completeBasket": true,
+      "reason": "Complete basket available.",
+      "distanceKm": 10,
+      "workloadPercent": 25,
+      "remainingCapacity": 90,
+      "inventoryScore": 100,
+      "distanceScore": 28.57,
+      "workloadScore": 75,
+      "capacityScore": 50,
+      "totalScore": 69.64
+    }
+  ]
+}
+
+
+###########################################################
+# 5. AI EXPLANATION - INVALID TOKEN
+#
+# Expected:
+# HTTP 401 Unauthorized
+###########################################################
+
+POST {{host}}/api/ai/explain
+Authorization: Bearer invalid-token
+Content-Type: application/json
+Accept: application/json
+
+{
+  "orderReference": "SYN-1001",
+  "recommendedLocationCode": "HYD-03",
+  "recommendedLocationName": "Kukatpally Store",
+  "winningScore": 69.64,
+  "deterministicExplanation": "Kukatpally Store was selected even though Hitech City Store is closer.",
+  "question": "Why was the nearest store not selected?",
+  "candidates": [
+    {
+      "rank": 1,
+      "locationCode": "HYD-03",
+      "locationName": "Kukatpally Store",
+      "eligible": true,
+      "completeBasket": true,
+      "reason": "Complete basket available.",
+      "distanceKm": 10,
+      "workloadPercent": 25,
+      "remainingCapacity": 90,
+      "inventoryScore": 100,
+      "distanceScore": 28.57,
+      "workloadScore": 75,
+      "capacityScore": 50,
+      "totalScore": 69.64
+    }
+  ]
+}
+
+
+###########################################################
+# 6. REAL TOKEN
+#
+# OPTIONAL MANUAL TEST
+#
+# Do NOT commit a real token.
+# Paste a newly issued access token temporarily.
+###########################################################
+
+@accessToken = PASTE_REAL_ACCESS_TOKEN_HERE
+
+
+###########################################################
+# 7. AUTH USER - REAL TOKEN
+#
+# Expected:
+# HTTP 200
+#
+# Should contain:
+#
+# authenticated = true
+# roles = FulfillmentManager
+# scopes = access_as_user
+###########################################################
+
+GET {{host}}/api/auth/me
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+
+###########################################################
+# 8. FULL REAL AZURE AI REQUEST
+#
+# Expected:
+# HTTP 200
+#
+# aiUsed = true
+# fallbackUsed = false
+# provider = Azure OpenAI
+# model = fulfilliq-gpt5-mini
+###########################################################
+
+POST {{host}}/api/ai/explain
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "orderReference": "SYN-1001",
+
+  "recommendedLocationCode": "HYD-03",
+
+  "recommendedLocationName": "Kukatpally Store",
+
+  "winningScore": 69.64,
+
+  "deterministicExplanation": "Kukatpally Store was selected even though Hitech City Store is closer. Kukatpally Store has workload of 25% and remaining capacity of 90, giving the location a better overall balance of inventory availability, distance, workload and capacity.",
+
+  "question": "Why was the nearest store not selected?",
+
+  "candidates": [
+    {
+      "rank": 1,
+      "locationCode": "HYD-03",
+      "locationName": "Kukatpally Store",
+      "eligible": true,
+      "completeBasket": true,
+      "reason": "Complete basket available.",
+      "distanceKm": 10,
+      "workloadPercent": 25,
+      "remainingCapacity": 90,
+      "inventoryScore": 100,
+      "distanceScore": 28.57,
+      "workloadScore": 75,
+      "capacityScore": 50,
+      "totalScore": 69.64
+    },
+
+    {
+      "rank": 2,
+      "locationCode": "WH-01",
+      "locationName": "Central Fulfillment Warehouse",
+      "eligible": true,
+      "completeBasket": true,
+      "reason": "Complete basket available.",
+      "distanceKm": 14,
+      "workloadPercent": 40,
+      "remainingCapacity": 180,
+      "inventoryScore": 100,
+      "distanceScore": 0,
+      "workloadScore": 60,
+      "capacityScore": 100,
+      "totalScore": 67
+    },
+
+    {
+      "rank": 3,
+      "locationCode": "HYD-02",
+      "locationName": "Hitech City Store",
+      "eligible": true,
+      "completeBasket": true,
+      "reason": "Complete basket available.",
+      "distanceKm": 5,
+      "workloadPercent": 85,
+      "remainingCapacity": 12,
+      "inventoryScore": 100,
+      "distanceScore": 64.29,
+      "workloadScore": 15,
+      "capacityScore": 6.67,
+      "totalScore": 60.07
+    },
+
+    {
+      "rank": 0,
+      "locationCode": "HYD-01",
+      "locationName": "Hyderabad Central Store",
+      "eligible": false,
+      "completeBasket": false,
+      "reason": "Incomplete basket. 1 product has insufficient stock.",
+      "distanceKm": 8,
+      "workloadPercent": 60,
+      "remainingCapacity": 40,
+      "inventoryScore": 0,
+      "distanceScore": 0,
+      "workloadScore": 0,
+      "capacityScore": 0,
+      "totalScore": 0
+    }
+  ]
+}
+
+
+###########################################################
+# 9. HYD-01 INELIGIBILITY QUESTION
+###########################################################
+
+POST {{host}}/api/ai/explain
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "orderReference": "SYN-1001",
+
+  "recommendedLocationCode": "HYD-03",
+
+  "recommendedLocationName": "Kukatpally Store",
+
+  "winningScore": 69.64,
+
+  "deterministicExplanation": "Kukatpally Store was selected by the deterministic fulfillment engine.",
+
+  "question": "Why is HYD-01 ineligible?",
+
+  "candidates": [
+    {
+      "rank": 1,
+      "locationCode": "HYD-03",
+      "locationName": "Kukatpally Store",
+      "eligible": true,
+      "completeBasket": true,
+      "reason": "Complete basket available.",
+      "distanceKm": 10,
+      "workloadPercent": 25,
+      "remainingCapacity": 90,
+      "inventoryScore": 100,
+      "distanceScore": 28.57,
+      "workloadScore": 75,
+      "capacityScore": 50,
+      "totalScore": 69.64
+    },
+
+    {
+      "rank": 0,
+      "locationCode": "HYD-01",
+      "locationName": "Hyderabad Central Store",
+      "eligible": false,
+      "completeBasket": false,
+      "reason": "Incomplete basket. 1 product has insufficient stock.",
+      "distanceKm": 8,
+      "workloadPercent": 60,
+      "remainingCapacity": 40,
+      "inventoryScore": 0,
+      "distanceScore": 0,
+      "workloadScore": 0,
+      "capacityScore": 0,
+      "totalScore": 0
+    }
+  ]
+}
+
+
+###########################################################
+# 10. FACTOR QUESTION
+###########################################################
+
+POST {{host}}/api/ai/explain
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "orderReference": "SYN-1001",
+
+  "recommendedLocationCode": "HYD-03",
+
+  "recommendedLocationName": "Kukatpally Store",
+
+  "winningScore": 69.64,
+
+  "deterministicExplanation": "Kukatpally Store achieved the highest deterministic score.",
+
+  "question": "Which factor influenced the result most?",
+
+  "candidates": [
+    {
+      "rank": 1,
+      "locationCode": "HYD-03",
+      "locationName": "Kukatpally Store",
+      "eligible": true,
+      "completeBasket": true,
+      "reason": "Complete basket available.",
+      "distanceKm": 10,
+      "workloadPercent": 25,
+      "remainingCapacity": 90,
+      "inventoryScore": 100,
+      "distanceScore": 28.57,
+      "workloadScore": 75,
+      "capacityScore": 50,
+      "totalScore": 69.64
+    },
+
+    {
+      "rank": 2,
+      "locationCode": "WH-01",
+      "locationName": "Central Fulfillment Warehouse",
+      "eligible": true,
+      "completeBasket": true,
+      "reason": "Complete basket available.",
+      "distanceKm": 14,
+      "workloadPercent": 40,
+      "remainingCapacity": 180,
+      "inventoryScore": 100,
+      "distanceScore": 0,
+      "workloadScore": 60,
+      "capacityScore": 100,
+      "totalScore": 67
+    },
+
+    {
+      "rank": 3,
+      "locationCode": "HYD-02",
+      "locationName": "Hitech City Store",
+      "eligible": true,
+      "completeBasket": true,
+      "reason": "Complete basket available.",
+      "distanceKm": 5,
+      "workloadPercent": 85,
+      "remainingCapacity": 12,
+      "inventoryScore": 100,
+      "distanceScore": 64.29,
+      "workloadScore": 15,
+      "capacityScore": 6.67,
+      "totalScore": 60.07
+    }
+  ]
+}

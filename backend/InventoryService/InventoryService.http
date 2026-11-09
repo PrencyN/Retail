@@ -1,0 +1,92 @@
+@host = http://localhost:5284
+
+
+###########################################################
+# 1. PUBLIC HEALTH
+###########################################################
+
+GET {{host}}/
+Accept: application/json
+
+
+###########################################################
+# 2. PUBLIC LOCATIONS
+###########################################################
+
+GET {{host}}/api/locations
+Accept: application/json
+
+
+###########################################################
+# 3. PUBLIC INVENTORY BY PRODUCT
+###########################################################
+
+GET {{host}}/api/inventory/03af967f-d714-444e-a396-14de174b45ca
+Accept: application/json
+
+
+###########################################################
+# 4. PROTECTED WORKLOAD UPDATE - NO TOKEN
+#
+# Expected:
+# 401 Unauthorized
+###########################################################
+
+PUT {{host}}/api/locations/HYD-03/workload
+Content-Type: application/json
+Accept: application/json
+
+{
+  "workloadPercent": 95
+}
+
+
+###########################################################
+# 5. PROTECTED WORKLOAD UPDATE - INVALID TOKEN
+#
+# Expected:
+# 401 Unauthorized
+###########################################################
+
+PUT {{host}}/api/locations/HYD-03/workload
+Authorization: Bearer invalid-token
+Content-Type: application/json
+Accept: application/json
+
+{
+  "workloadPercent": 95
+}
+
+
+###########################################################
+# 6. PROTECTED STOCK UPDATE - NO TOKEN
+#
+# Expected:
+# 401 Unauthorized
+###########################################################
+
+PUT {{host}}/api/inventory/cdbbf518-d4d4-4c8f-9aaf-e3e6188d6d99/HYD-02
+Content-Type: application/json
+Accept: application/json
+
+{
+  "availableQuantity": 0,
+  "reservedQuantity": 0,
+  "reorderLevel": 2
+}
+
+
+###########################################################
+# 7. RESTORE STOCK - REQUIRES REAL TOKEN
+###########################################################
+
+PUT {{host}}/api/inventory/cdbbf518-d4d4-4c8f-9aaf-e3e6188d6d99/HYD-02
+Authorization: Bearer PASTE_REAL_ACCESS_TOKEN_HERE
+Content-Type: application/json
+Accept: application/json
+
+{
+  "availableQuantity": 4,
+  "reservedQuantity": 1,
+  "reorderLevel": 2
+}

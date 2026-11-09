@@ -1,0 +1,36 @@
+.dev-token-area {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dev-token-button {
+  padding: 7px 10px;
+
+  border: 1px solid
+    rgba(255, 255, 255, 0.3);
+
+  border-radius: 8px;
+
+  color: white;
+  background:
+    rgba(124, 58, 237, 0.8);
+
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.dev-token-button:hover {
+  background:
+    rgba(109, 40, 217, 0.95);
+}
+
+.dev-token-error {
+  max-width: 180px;
+
+  color: #fecaca;
+
+  font-size: 10px;
+}

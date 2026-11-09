@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="AIService/AIService.csproj" />
+  <Project Path="CatalogService/CatalogService.csproj" />
+  <Project Path="FulfillmentService.Tests/FulfillmentService.Tests.csproj" />
+  <Project Path="FulfillmentService/FulfillmentService.csproj" />
+  <Project Path="InventoryService/InventoryService.csproj" />
+  <Project Path="OrderService/OrderService.csproj" />
+</Solution>

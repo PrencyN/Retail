@@ -1,0 +1,19 @@
+@host = http://localhost:5249
+
+
+### Public health
+
+GET {{host}}/
+Accept: application/json
+
+
+### Protected fulfillment - no token
+
+POST {{host}}/api/fulfillment/orders/SYN-1001/calculate
+Accept: application/json
+
+### Protected fulfillment - invalid token
+
+POST {{host}}/api/fulfillment/orders/SYN-1001/calculate
+Authorization: Bearer this-is-not-a-valid-token
+Accept: application/json
