@@ -10,12 +10,6 @@ import {
 import AiAssistant
   from "../components/AiAssistant";
 
-import CandidateLocationCard
-  from "../components/CandidateLocationCard";
-
-import RecommendationCard
-  from "../components/RecommendationCard";
-
 import RecommendationChangeBanner, {
   type SimulationChange,
 } from "../components/RecommendationChangeBanner";
@@ -51,6 +45,14 @@ const RemoteOrderSummary =
     () =>
       import(
         "order_mfe/OrderSummary"
+      )
+  );
+
+const RemoteFulfillmentAnalysis =
+  lazy(
+    () =>
+      import(
+        "fulfillment_mfe/FulfillmentAnalysis"
       )
   );
 
@@ -545,59 +547,29 @@ function FulfillmentPage() {
 
       {decision && (
         <>
-          <RecommendationCard
-            decision={
-              decision
-            }
-          />
+          <RemoteErrorBoundary>
+            <Suspense
+              fallback={
+                <section className="remote-loading-card">
+                  <div
+                    className="spinner"
+                    aria-hidden="true"
+                  />
 
-          <section className="candidate-section">
-            <div className="section-heading">
-              <div>
-                <span className="section-label">
-                  Fulfillment Analysis
-                </span>
-
-                <h2>
-                  Candidate Locations
-                </h2>
-              </div>
-
-              <span className="evaluated-count">
-                {
+                  <p>
+                    Loading Fulfillment Analysis
+                    micro-frontend...
+                  </p>
+                </section>
+              }
+            >
+              <RemoteFulfillmentAnalysis
+                decision={
                   decision
-                    .candidates
-                    .length
                 }
-                {" "}
-                locations evaluated
-              </span>
-            </div>
-
-            <div className="candidate-grid">
-              {decision
-                .candidates
-                .map(
-                  candidate => (
-                    <CandidateLocationCard
-                      key={
-                        candidate
-                          .locationCode
-                      }
-                      candidate={
-                        candidate
-                      }
-                      recommended={
-                        candidate
-                          .locationCode ===
-                        decision
-                          .recommendedLocationCode
-                      }
-                    />
-                  )
-                )}
-            </div>
-          </section>
+              />
+            </Suspense>
+          </RemoteErrorBoundary>
 
           <section className="simulation-section">
             <div className="section-heading">

@@ -1,0 +1,565 @@
+.remote-fulfillment-analysis {
+  position: relative;
+
+  display: grid;
+
+  gap: 28px;
+
+  margin-top: 28px;
+}
+
+.remote-domain-badge {
+  position: absolute;
+
+  top: 16px;
+  right: 16px;
+
+  z-index: 2;
+
+  padding: 5px 9px;
+
+  border-radius: 999px;
+
+  color: #166534;
+  background: #dcfce7;
+
+  font-size: 10px;
+  font-weight: 850;
+
+  letter-spacing: 0.04em;
+}
+
+.remote-section-label {
+  display: block;
+
+  color: #15803d;
+
+  font-size: 11px;
+  font-weight: 850;
+
+  letter-spacing: 0.08em;
+
+  text-transform: uppercase;
+}
+
+.remote-recommendation-card {
+  display: flex;
+
+  justify-content:
+    space-between;
+
+  align-items:
+    center;
+
+  gap: 28px;
+
+  padding: 32px;
+
+  border: 1px solid #86efac;
+  border-left: 8px solid #22c55e;
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f0fdf4,
+      #ffffff
+    );
+
+  box-shadow:
+    0 12px 34px
+    rgba(22, 101, 52, 0.08);
+}
+
+.remote-recommendation-content {
+  min-width: 0;
+}
+
+.remote-recommendation-content h2 {
+  margin: 9px 0 5px;
+
+  color: #0f172a;
+
+  font-size: 32px;
+  line-height: 1.15;
+}
+
+.remote-recommendation-code {
+  display: inline-flex;
+
+  margin-top: 5px;
+  padding: 5px 10px;
+
+  border-radius: 999px;
+
+  color: #166534;
+  background: #dcfce7;
+
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.remote-recommendation-content p {
+  max-width: 760px;
+
+  margin: 15px 0 0;
+
+  color: #475569;
+
+  line-height: 1.65;
+}
+
+.remote-winning-score {
+  display: flex;
+
+  flex: 0 0 auto;
+  flex-direction: column;
+
+  align-items: center;
+
+  min-width: 150px;
+
+  padding: 22px;
+
+  border-radius: 16px;
+
+  color: white;
+
+  background:
+    linear-gradient(
+      135deg,
+      #16a34a,
+      #15803d
+    );
+
+  box-shadow:
+    0 12px 28px
+    rgba(22, 163, 74, 0.24);
+}
+
+.remote-winning-score span {
+  font-size: 11px;
+  font-weight: 750;
+
+  letter-spacing: 0.06em;
+
+  text-transform: uppercase;
+}
+
+.remote-winning-score strong {
+  margin: 5px 0;
+
+  font-size: 38px;
+  line-height: 1;
+}
+
+.remote-winning-score small {
+  color: #dcfce7;
+}
+
+.remote-no-recommendation-card {
+  padding: 28px;
+
+  border: 1px solid #fecaca;
+  border-left: 8px solid #ef4444;
+  border-radius: 18px;
+
+  background: #fffafa;
+}
+
+.remote-no-recommendation-card h2 {
+  margin: 8px 0;
+
+  color: #991b1b;
+}
+
+.remote-no-recommendation-card p {
+  margin: 0;
+
+  color: #64748b;
+
+  line-height: 1.6;
+}
+
+.remote-candidate-section {
+  padding: 28px;
+
+  border: 1px solid #dbe4f0;
+  border-radius: 18px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 10px 30px
+    rgba(15, 23, 42, 0.05);
+}
+
+.remote-section-heading {
+  display: flex;
+
+  justify-content:
+    space-between;
+
+  align-items:
+    flex-end;
+
+  gap: 16px;
+
+  margin-bottom: 22px;
+}
+
+.remote-section-heading h2 {
+  margin: 5px 0 0;
+
+  color: #0f172a;
+
+  font-size: 26px;
+}
+
+.remote-evaluated-count {
+  padding: 7px 11px;
+
+  border-radius: 999px;
+
+  color: #475569;
+  background: #f1f5f9;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.remote-candidate-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+
+  gap: 18px;
+}
+
+.remote-candidate-card {
+  padding: 20px;
+
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+
+  background: #ffffff;
+
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.remote-candidate-card:hover {
+  transform:
+    translateY(-2px);
+
+  box-shadow:
+    0 10px 24px
+    rgba(15, 23, 42, 0.08);
+}
+
+.remote-candidate-recommended {
+  border-color: #4ade80;
+
+  box-shadow:
+    0 8px 24px
+    rgba(34, 197, 94, 0.10);
+}
+
+.remote-candidate-ineligible {
+  border-color: #fecaca;
+
+  background: #fffafa;
+}
+
+.remote-candidate-top {
+  display: flex;
+
+  justify-content:
+    space-between;
+
+  align-items:
+    flex-start;
+
+  gap: 14px;
+}
+
+.remote-candidate-badges {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 6px;
+}
+
+.remote-location-code,
+.remote-rank-badge,
+.remote-recommended-badge,
+.remote-ineligible-badge {
+  padding: 4px 8px;
+
+  border-radius: 999px;
+
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.remote-location-code {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.remote-rank-badge {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.remote-recommended-badge {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.remote-ineligible-badge {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.remote-candidate-top h3 {
+  margin: 10px 0 0;
+
+  color: #0f172a;
+
+  font-size: 20px;
+}
+
+.remote-score-circle {
+  display: grid;
+
+  place-items: center;
+
+  flex: 0 0 auto;
+
+  width: 72px;
+  height: 72px;
+
+  border-radius: 999px;
+
+  color: #166534;
+  background: #dcfce7;
+
+  text-align: center;
+}
+
+.remote-score-circle strong {
+  display: block;
+
+  font-size: 17px;
+  line-height: 1;
+}
+
+.remote-score-circle span {
+  font-size: 9px;
+
+  text-transform: uppercase;
+}
+
+.remote-candidate-metrics {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+
+  gap: 10px;
+
+  margin-top: 18px;
+}
+
+.remote-candidate-metrics > div {
+  padding: 10px;
+
+  border-radius: 9px;
+
+  background: #f8fafc;
+}
+
+.remote-candidate-metrics span {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: #64748b;
+
+  font-size: 10px;
+
+  text-transform: uppercase;
+}
+
+.remote-candidate-metrics strong {
+  color: #334155;
+
+  font-size: 14px;
+}
+
+.remote-candidate-reason {
+  margin-top: 15px;
+  padding: 11px 13px;
+
+  border-radius: 9px;
+
+  background: #f8fafc;
+}
+
+.remote-candidate-reason span {
+  display: block;
+
+  color: #64748b;
+
+  font-size: 10px;
+  font-weight: 750;
+
+  letter-spacing: 0.05em;
+
+  text-transform: uppercase;
+}
+
+.remote-candidate-reason p {
+  margin: 5px 0 0;
+
+  color: #475569;
+
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.remote-score-breakdown {
+  margin-top: 15px;
+}
+
+.remote-score-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(0, 1fr)
+    );
+
+  gap: 7px;
+}
+
+.remote-score-item {
+  padding: 9px 6px;
+
+  border-radius: 8px;
+
+  background: #f8fafc;
+
+  text-align: center;
+}
+
+.remote-score-item span {
+  display: block;
+
+  color: #64748b;
+
+  font-size: 9px;
+
+  text-transform: uppercase;
+}
+
+.remote-score-item strong {
+  display: block;
+
+  margin: 4px 0;
+
+  color: #1e293b;
+
+  font-size: 13px;
+}
+
+.remote-score-item small {
+  color: #94a3b8;
+
+  font-size: 8px;
+}
+
+.remote-total-score {
+  display: flex;
+
+  justify-content:
+    space-between;
+
+  align-items: center;
+
+  margin-top: 8px;
+  padding: 10px 12px;
+
+  border-radius: 9px;
+
+  color: #166534;
+  background: #dcfce7;
+
+  font-weight: 800;
+}
+
+.remote-ineligible-score {
+  margin-top: 15px;
+  padding: 12px;
+
+  border-radius: 9px;
+
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.remote-ineligible-score p {
+  margin: 5px 0 0;
+
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .remote-candidate-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  .remote-recommendation-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .remote-winning-score {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .remote-candidate-section,
+  .remote-recommendation-card {
+    padding: 20px;
+  }
+
+  .remote-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .remote-candidate-metrics,
+  .remote-score-grid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+}

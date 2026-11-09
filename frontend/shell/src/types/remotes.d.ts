@@ -26,3 +26,25 @@ declare module "order_mfe/OrderSummary" {
 
   export default OrderSummary;
 }
+
+declare module "fulfillment_mfe/FulfillmentAnalysis" {
+  import type {
+    ComponentType,
+  } from "react";
+
+  import type {
+    FulfillmentDecision,
+  } from "./fulfillment";
+
+  export type FulfillmentAnalysisRemoteProps = {
+    decision:
+      FulfillmentDecision;
+  };
+
+  const FulfillmentAnalysis:
+    ComponentType<
+      FulfillmentAnalysisRemoteProps
+    >;
+
+  export default FulfillmentAnalysis;
+}

@@ -17,6 +17,17 @@ export default createModuleFederationConfig({
       entry:
         "http://localhost:5174/remoteEntry.js",
     },
+
+    fulfillment_mfe: {
+      type:
+        "module",
+
+      name:
+        "fulfillment_mfe",
+
+      entry:
+        "http://localhost:5175/remoteEntry.js",
+    },
   },
 
   shared: {
