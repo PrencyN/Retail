@@ -5,110 +5,105 @@ import {
   type RedirectRequest,
 } from "@azure/msal-browser";
 
-function requireEnvironmentValue(
-  name: string,
-  value: string | undefined
-): string {
-  const normalizedValue =
-    value?.trim();
+const tenantId =
+  import.meta.env.VITE_ENTRA_TENANT_ID;
 
-  if (!normalizedValue) {
-    throw new Error(
-      `Missing required environment variable: ${name}`
-    );
-  }
+const spaClientId =
+  import.meta.env.VITE_ENTRA_SPA_CLIENT_ID;
 
-  return normalizedValue;
+const apiClientId =
+  import.meta.env.VITE_ENTRA_API_CLIENT_ID;
+
+if (!tenantId) {
+  throw new Error(
+    "VITE_ENTRA_TENANT_ID is not configured."
+  );
 }
 
-export const tenantId =
-  requireEnvironmentValue(
-    "VITE_ENTRA_TENANT_ID",
-    import.meta.env.VITE_ENTRA_TENANT_ID
+if (!spaClientId) {
+  throw new Error(
+    "VITE_ENTRA_SPA_CLIENT_ID is not configured."
   );
+}
 
-export const spaClientId =
-  requireEnvironmentValue(
-    "VITE_ENTRA_SPA_CLIENT_ID",
-    import.meta.env.VITE_ENTRA_SPA_CLIENT_ID
+if (!apiClientId) {
+  throw new Error(
+    "VITE_ENTRA_API_CLIENT_ID is not configured."
   );
+}
 
-export const apiClientId =
-  requireEnvironmentValue(
-    "VITE_ENTRA_API_CLIENT_ID",
-    import.meta.env.VITE_ENTRA_API_CLIENT_ID
-  );
+export const tokenRequestScopes:
+  string[] = [
+    `api://${apiClientId}/access_as_user`,
+  ];
 
-export const apiScope =
-  `api://${apiClientId}/access_as_user`;
+export const msalConfig:
+  Configuration = {
+    auth: {
+      clientId:
+        spaClientId,
 
-export const tokenRequestScopes: string[] = [
-  apiScope,
-];
+      authority:
+        `https://login.microsoftonline.com/${tenantId}`,
 
-export const msalConfig: Configuration = {
-  auth: {
-    clientId:
-      spaClientId,
+      redirectUri:
+        window.location.origin,
 
-    authority:
-      `https://login.microsoftonline.com/${tenantId}`,
+      postLogoutRedirectUri:
+        window.location.origin,
+    },
 
-    redirectUri:
-      "http://localhost:5173",
+    cache: {
+      cacheLocation:
+        BrowserCacheLocation.SessionStorage,
+    },
 
-    postLogoutRedirectUri:
-      "http://localhost:5173",
-  },
+    system: {
+      loggerOptions: {
+        loggerCallback: (
+          level,
+          message,
+          containsPii
+        ) => {
+          if (containsPii) {
+            return;
+          }
 
-  cache: {
-    cacheLocation:
-      BrowserCacheLocation.SessionStorage,
-  },
+          switch (level) {
+            case LogLevel.Error:
+              console.error(
+                message
+              );
+              break;
 
-  system: {
-    allowPlatformBroker:
-      false,
+            case LogLevel.Warning:
+              console.warn(
+                message
+              );
+              break;
 
-    loggerOptions: {
-      logLevel:
-        LogLevel.Warning,
+            case LogLevel.Info:
+              console.info(
+                message
+              );
+              break;
 
-      piiLoggingEnabled:
-        false,
+            case LogLevel.Verbose:
+              console.debug(
+                message
+              );
+              break;
 
-      loggerCallback: (
-        level,
-        message,
-        containsPii
-      ) => {
-        if (containsPii) {
-          return;
-        }
+            default:
+              break;
+          }
+        },
 
-        if (
-          level ===
-          LogLevel.Error
-        ) {
-          console.error(
-            `[MSAL] ${message}`
-          );
-
-          return;
-        }
-
-        if (
-          level ===
-          LogLevel.Warning
-        ) {
-          console.warn(
-            `[MSAL] ${message}`
-          );
-        }
+        piiLoggingEnabled:
+          false,
       },
     },
-  },
-};
+  };
 
 export const loginRequest:
   RedirectRequest = {
@@ -116,9 +111,11 @@ export const loginRequest:
       "openid",
       "profile",
       "email",
-      apiScope,
+      ...tokenRequestScopes,
     ],
-
-    prompt:
-      "select_account",
   };
+
+export const apiTokenRequest = {
+  scopes:
+    tokenRequestScopes,
+};

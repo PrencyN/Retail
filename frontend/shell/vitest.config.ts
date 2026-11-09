@@ -21,8 +21,27 @@ export default defineConfig({
     ],
 
     include: [
-      "src/**/*.{test,spec}.{ts,tsx}",
+      "src/**/*.test.ts",
+      "src/**/*.test.tsx",
     ],
+
+    exclude: [
+      "playwright/**",
+      "cypress/**",
+      "node_modules/**",
+      "dist/**",
+    ],
+
+    env: {
+      VITE_ENTRA_CLIENT_ID:
+        "00000000-0000-0000-0000-000000000001",
+
+      VITE_ENTRA_TENANT_ID:
+        "00000000-0000-0000-0000-000000000002",
+
+      VITE_ENTRA_API_CLIENT_ID:
+        "00000000-0000-0000-0000-000000000003",
+    },
 
     css: true,
 

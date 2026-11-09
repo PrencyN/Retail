@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "preview": "vite preview",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "playwright:auth": "playwright test --project=auth-setup --headed",
+    "playwright:test": "playwright test --project=chromium --project=chromium-ai",
+    "playwright:headed": "playwright test --project=chromium --headed",
+    "playwright:ai": "playwright test --project=chromium --project=chromium-ai",
+    "playwright:report": "playwright show-report"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.29.0",
@@ -19,6 +22,7 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",

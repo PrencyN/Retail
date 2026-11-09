@@ -1,0 +1,46 @@
+#root {
+  min-height: 100vh;
+}
+
+.manager-mfe-preview {
+  width:
+    min(
+      calc(100% - 32px),
+      1320px
+    );
+
+  margin:
+    0 auto;
+
+  padding:
+    44px 0 64px;
+}
+
+.manager-mfe-preview > header {
+  margin-bottom: 16px;
+}
+
+.manager-mfe-preview > header span {
+  color: #7c3aed;
+
+  font-size: 12px;
+  font-weight: 850;
+
+  letter-spacing: 0.08em;
+
+  text-transform: uppercase;
+}
+
+.manager-mfe-preview > header h1 {
+  margin: 7px 0;
+
+  color: #0f172a;
+
+  font-size: 36px;
+}
+
+.manager-mfe-preview > header p {
+  margin: 0;
+
+  color: #64748b;
+}

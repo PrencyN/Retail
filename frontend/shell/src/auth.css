@@ -34,3 +34,54 @@
 
   font-size: 10px;
 }
+
+/* ======================================================
+   INDEPENDENT MICRO-FRONTEND RETRY
+   ====================================================== */
+
+.remote-error-actions {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 10px;
+
+  margin-top: 16px;
+}
+
+.remote-error-actions .primary-button,
+.remote-error-actions .secondary-button {
+  margin: 0;
+}
+
+.remote-error-details {
+  margin: 12px 0 0;
+
+  padding: 10px 12px;
+
+  border-radius: 8px;
+
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+.remote-error-details summary {
+  cursor: pointer;
+
+  color: #991b1b;
+
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.remote-error-details small {
+  display: block;
+
+  margin-top: 8px;
+
+  color: #b91c1c;
+
+  line-height: 1.45;
+
+  overflow-wrap: anywhere;
+}

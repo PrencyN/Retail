@@ -1,31 +1,20 @@
 import {
   lazy,
-  Suspense,
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from "react";
 
-import AiAssistant
-  from "../components/AiAssistant";
-
-import RecommendationChangeBanner, {
-  type SimulationChange,
-} from "../components/RecommendationChangeBanner";
-
-import RemoteErrorBoundary
-  from "../components/RemoteErrorBoundary";
-
-import StockSimulator
-  from "../components/StockSimulator";
+import RemoteLoader
+  from "../components/RemoteLoader";
 
 import UserMenu
   from "../components/UserMenu";
 
-import WorkloadSimulator, {
-  type SimulationUpdate,
-} from "../components/WorkloadSimulator";
+import {
+  explainDecision,
+} from "../services/aiApi";
 
 import {
   calculateFulfillment,
@@ -39,6 +28,13 @@ import {
 import type {
   FulfillmentDecision,
 } from "../types/fulfillment";
+
+import type {
+  ManagerAiRequest,
+  ManagerAiResponse,
+  ManagerSimulationChange,
+  ManagerSimulationUpdate,
+} from "manager_mfe/ManagerWorkspace";
 
 const RemoteOrderSummary =
   lazy(
@@ -56,11 +52,22 @@ const RemoteFulfillmentAnalysis =
       )
   );
 
+const RemoteManagerWorkspace =
+  lazy(
+    () =>
+      import(
+        "manager_mfe/ManagerWorkspace"
+      )
+  );
+
 const ORDER_REFERENCE =
   "SYN-1001";
 
 const KUKATPALLY_LOCATION_CODE =
   "HYD-03";
+
+const KUKATPALLY_LOCATION_NAME =
+  "Kukatpally Store";
 
 const KUKATPALLY_DEFAULT_WORKLOAD =
   25;
@@ -68,8 +75,14 @@ const KUKATPALLY_DEFAULT_WORKLOAD =
 const HITECH_LOCATION_CODE =
   "HYD-02";
 
+const HITECH_LOCATION_NAME =
+  "Hitech City Store";
+
 const ELECTRONICS_PRODUCT_ID =
   "cdbbf518-d4d4-4c8f-9aaf-e3e6188d6d99";
+
+const ELECTRONICS_PRODUCT_NAME =
+  "RetailIQ Red Electronics 25";
 
 const HITECH_DEFAULT_AVAILABLE_QUANTITY =
   4;
@@ -85,24 +98,21 @@ const orderItems = [
     productName:
       "Nike Black Performance Running Shoe",
 
-    quantity:
-      2,
+    quantity: 2,
   },
 
   {
     productName:
       "Reebok Grey Clothing 24",
 
-    quantity:
-      1,
+    quantity: 1,
   },
 
   {
     productName:
-      "RetailIQ Red Electronics 25",
+      ELECTRONICS_PRODUCT_NAME,
 
-    quantity:
-      1,
+    quantity: 1,
   },
 ];
 
@@ -137,9 +147,10 @@ function FulfillmentPage() {
     simulationChange,
     setSimulationChange,
   ] =
-    useState<SimulationChange | null>(
+    useState<
+      ManagerSimulationChange |
       null
-    );
+    >(null);
 
   const [
     resetVersion,
@@ -161,13 +172,8 @@ function FulfillmentPage() {
     useCallback(
       async (): Promise<void> => {
         try {
-          setLoading(
-            true
-          );
-
-          setError(
-            ""
-          );
+          setLoading(true);
+          setError("");
 
           const result =
             await fetchDecision();
@@ -182,81 +188,147 @@ function FulfillmentPage() {
               : "Unable to calculate fulfillment."
           );
         } finally {
-          setLoading(
-            false
-          );
+          setLoading(false);
         }
       },
-      [
-        fetchDecision,
-      ]
+      [fetchDecision]
     );
 
   async function recalculateAfterSimulation(
-    update: SimulationUpdate
+    update: ManagerSimulationUpdate
   ): Promise<void> {
     const previousDecision =
       decision;
 
-    try {
-      setError(
-        ""
-      );
+    const newDecision =
+      await fetchDecision();
 
-      const newDecision =
-        await fetchDecision();
+    setDecision(
+      newDecision
+    );
 
-      setDecision(
+    setSimulationChange({
+      title:
+        update.title,
+
+      cause:
+        update.cause,
+
+      previousLocationCode:
+        previousDecision
+          ?.recommendedLocationCode ??
+        null,
+
+      previousLocationName:
+        previousDecision
+          ?.recommendedLocationName ??
+        null,
+
+      previousScore:
+        previousDecision
+          ?.winningScore ??
+        null,
+
+      newLocationCode:
         newDecision
-      );
+          .recommendedLocationCode,
 
-      const recommendationChanged =
+      newLocationName:
+        newDecision
+          .recommendedLocationName,
+
+      newScore:
+        newDecision
+          .winningScore,
+
+      recommendationChanged:
         previousDecision
           ?.recommendedLocationCode !==
         newDecision
-          .recommendedLocationCode;
+          .recommendedLocationCode,
+    });
+  }
 
-      setSimulationChange({
-        title:
-          update.title,
+  async function handleWorkloadUpdate(
+    locationCode: string,
+    workloadPercent: number,
+    update: ManagerSimulationUpdate
+  ): Promise<void> {
+    try {
+      setError("");
 
-        cause:
-          update.cause,
+      await updateWorkload(
+        locationCode,
+        workloadPercent
+      );
 
-        previousLocationCode:
-          previousDecision
-            ?.recommendedLocationCode ??
-          null,
-
-        previousLocationName:
-          previousDecision
-            ?.recommendedLocationName ??
-          null,
-
-        previousScore:
-          previousDecision
-            ?.winningScore ??
-          null,
-
-        newLocationCode:
-          newDecision
-            .recommendedLocationCode,
-
-        newLocationName:
-          newDecision
-            .recommendedLocationName,
-
-        newScore:
-          newDecision
-            .winningScore,
-
-        recommendationChanged,
-      });
+      await recalculateAfterSimulation(
+        update
+      );
     } catch (requestError) {
       const message =
         requestError instanceof Error
           ? requestError.message
-          : "Unable to recalculate fulfillment.";
+          : "Unable to update workload.";
+
+      setError(
+        message
+      );
+
+      throw requestError;
+    }
+  }
+
+  async function handleStockUpdate(
+    productId: string,
+    locationCode: string,
+    availableQuantity: number,
+    reservedQuantity: number,
+    reorderLevel: number,
+    update: ManagerSimulationUpdate
+  ): Promise<void> {
+    try {
+      setError("");
+
+      await updateInventory(
+        productId,
+        locationCode,
+        availableQuantity,
+        reservedQuantity,
+        reorderLevel
+      );
+
+      await recalculateAfterSimulation(
+        update
+      );
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to update inventory.";
+
+      setError(
+        message
+      );
+
+      throw requestError;
+    }
+  }
+
+  async function handleAskAi(
+    request: ManagerAiRequest
+  ): Promise<ManagerAiResponse> {
+    try {
+      setError("");
+
+      return await explainDecision(
+        request
+      );
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to generate AI explanation.";
 
       setError(
         message
@@ -272,13 +344,8 @@ function FulfillmentPage() {
       decision;
 
     try {
-      setResetting(
-        true
-      );
-
-      setError(
-        ""
-      );
+      setResetting(true);
+      setError("");
 
       await Promise.all([
         updateWorkload(
@@ -303,15 +370,9 @@ function FulfillmentPage() {
       );
 
       setResetVersion(
-        currentVersion =>
-          currentVersion + 1
+        current =>
+          current + 1
       );
-
-      const recommendationChanged =
-        previousDecision
-          ?.recommendedLocationCode !==
-        newDecision
-          .recommendedLocationCode;
 
       setSimulationChange({
         title:
@@ -350,7 +411,11 @@ function FulfillmentPage() {
           newDecision
             .winningScore,
 
-        recommendationChanged,
+        recommendationChanged:
+          previousDecision
+            ?.recommendedLocationCode !==
+          newDecision
+            .recommendedLocationCode,
       });
     } catch (requestError) {
       setError(
@@ -359,9 +424,7 @@ function FulfillmentPage() {
           : "Unable to reset the demo."
       );
     } finally {
-      setResetting(
-        false
-      );
+      setResetting(false);
     }
   }
 
@@ -369,9 +432,7 @@ function FulfillmentPage() {
     () => {
       void loadDecision();
     },
-    [
-      loadDecision,
-    ]
+    [loadDecision]
   );
 
   const hyd03 =
@@ -384,9 +445,7 @@ function FulfillmentPage() {
               candidate.locationCode ===
               KUKATPALLY_LOCATION_CODE
           ),
-      [
-        decision,
-      ]
+      [decision]
     );
 
   const busy =
@@ -398,8 +457,7 @@ function FulfillmentPage() {
       <header className="hero-header">
         <div>
           <span className="eyebrow">
-            POD 14 · OMNICHANNEL
-            FULFILLMENT
+            POD 14 · OMNICHANNEL FULFILLMENT
           </span>
 
           <h1>
@@ -450,52 +508,29 @@ function FulfillmentPage() {
         </div>
       </header>
 
-      <RemoteErrorBoundary>
-        <Suspense
-          fallback={
-            <section className="remote-loading-card">
-              <div
-                className="spinner"
-                aria-hidden="true"
-              />
-
-              <p>
-                Loading Order Summary
-                micro-frontend...
-              </p>
-            </section>
+      <RemoteLoader
+        remoteName="Order MFE"
+        title="Order Summary could not load"
+        port={5174}
+        loadingMessage={
+          "Loading Order Summary micro-frontend..."
+        }
+      >
+        <RemoteOrderSummary
+          orderReference={
+            ORDER_REFERENCE
           }
-        >
-          <RemoteOrderSummary
-            orderReference={
-              ORDER_REFERENCE
-            }
-            customerName={
-              "Synthetic Customer"
-            }
-            fulfillmentZone={
-              "Hyderabad"
-            }
-            items={
-              orderItems
-            }
-          />
-        </Suspense>
-      </RemoteErrorBoundary>
-
-      {simulationChange && (
-        <RecommendationChangeBanner
-          change={
-            simulationChange
+          customerName={
+            "Synthetic Customer"
           }
-          onDismiss={
-            () =>
-              setSimulationChange(
-                null
-              )
+          fulfillmentZone={
+            "Hyderabad"
+          }
+          items={
+            orderItems
           }
         />
-      )}
+      </RemoteLoader>
 
       {error && (
         <div
@@ -528,108 +563,107 @@ function FulfillmentPage() {
 
       {loading &&
         !decision && (
-        <div
-          className="loading-card"
-          aria-live="polite"
-        >
           <div
-            className="spinner"
-            aria-hidden="true"
-          />
+            className="loading-card"
+            aria-live="polite"
+          >
+            <div
+              className="spinner"
+              aria-hidden="true"
+            />
 
-          <p>
-            Evaluating inventory,
-            distance, workload and
-            capacity...
-          </p>
-        </div>
-      )}
+            <p>
+              Evaluating inventory,
+              distance, workload and
+              capacity...
+            </p>
+          </div>
+        )}
 
       {decision && (
         <>
-          <RemoteErrorBoundary>
-            <Suspense
-              fallback={
-                <section className="remote-loading-card">
-                  <div
-                    className="spinner"
-                    aria-hidden="true"
-                  />
-
-                  <p>
-                    Loading Fulfillment Analysis
-                    micro-frontend...
-                  </p>
-                </section>
-              }
-            >
-              <RemoteFulfillmentAnalysis
-                decision={
-                  decision
-                }
-              />
-            </Suspense>
-          </RemoteErrorBoundary>
-
-          <section className="simulation-section">
-            <div className="section-heading">
-              <div>
-                <span className="section-label">
-                  What-If Analysis
-                </span>
-
-                <h2>
-                  Fulfillment Simulator
-                </h2>
-
-                <p>
-                  Change operational data and
-                  immediately see how the
-                  deterministic recommendation
-                  responds.
-                </p>
-              </div>
-            </div>
-
-            <div className="simulator-grid">
-              <WorkloadSimulator
-                locationCode={
-                  KUKATPALLY_LOCATION_CODE
-                }
-                locationName={
-                  "Kukatpally Store"
-                }
-                currentWorkload={
-                  hyd03
-                    ?.workloadPercent ??
-                  KUKATPALLY_DEFAULT_WORKLOAD
-                }
-                onUpdated={
-                  recalculateAfterSimulation
-                }
-              />
-
-              <StockSimulator
-                key={
-                  resetVersion
-                }
-                resetVersion={
-                  resetVersion
-                }
-                onUpdated={
-                  recalculateAfterSimulation
-                }
-              />
-            </div>
-          </section>
-
-          <section className="ai-section">
-            <AiAssistant
+          <RemoteLoader
+            remoteName="Fulfillment MFE"
+            title="Fulfillment Analysis could not load"
+            port={5175}
+            loadingMessage={
+              "Loading Fulfillment Analysis micro-frontend..."
+            }
+          >
+            <RemoteFulfillmentAnalysis
               decision={
                 decision
               }
             />
-          </section>
+          </RemoteLoader>
+
+          <RemoteLoader
+            remoteName="Manager MFE"
+            title="Manager Workspace could not load"
+            port={5176}
+            loadingMessage={
+              "Loading Manager Workspace micro-frontend..."
+            }
+          >
+            <RemoteManagerWorkspace
+              decision={
+                decision
+              }
+              simulationChange={
+                simulationChange
+              }
+              resetVersion={
+                resetVersion
+              }
+              workloadLocationCode={
+                KUKATPALLY_LOCATION_CODE
+              }
+              workloadLocationName={
+                KUKATPALLY_LOCATION_NAME
+              }
+              currentWorkload={
+                hyd03
+                  ?.workloadPercent ??
+                KUKATPALLY_DEFAULT_WORKLOAD
+              }
+              stockProductId={
+                ELECTRONICS_PRODUCT_ID
+              }
+              stockProductName={
+                ELECTRONICS_PRODUCT_NAME
+              }
+              stockLocationCode={
+                HITECH_LOCATION_CODE
+              }
+              stockLocationName={
+                HITECH_LOCATION_NAME
+              }
+              initialAvailableQuantity={
+                HITECH_DEFAULT_AVAILABLE_QUANTITY
+              }
+              initialReservedQuantity={
+                HITECH_DEFAULT_RESERVED_QUANTITY
+              }
+              initialReorderLevel={
+                HITECH_DEFAULT_REORDER_LEVEL
+              }
+              onUpdateWorkload={
+                handleWorkloadUpdate
+              }
+              onUpdateStock={
+                handleStockUpdate
+              }
+              onAskAi={
+                handleAskAi
+              }
+              onDismissChange={
+                () =>
+                  setSimulationChange(
+                    null
+                  )
+              }
+            />
+          </RemoteLoader>
         </>
       )}
     </main>

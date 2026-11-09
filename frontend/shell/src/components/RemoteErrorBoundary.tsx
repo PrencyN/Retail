@@ -5,6 +5,15 @@ import {
   type ReactNode,
 } from "react";
 
+type Props =
+  PropsWithChildren<{
+    remoteName: string;
+
+    title: string;
+
+    port: number;
+  }>;
+
 type State = {
   hasError: boolean;
 
@@ -13,7 +22,7 @@ type State = {
 
 class RemoteErrorBoundary
   extends Component<
-    PropsWithChildren,
+    Props,
     State
   > {
   public state: State = {
@@ -41,20 +50,19 @@ class RemoteErrorBoundary
     errorInfo: ErrorInfo
   ): void {
     console.error(
-      "Unable to load the Order micro-frontend.",
+      `Unable to load ${this.props.remoteName}.`,
       error,
       errorInfo
     );
   }
 
-  private handleRetry = (): void => {
-    window.location.reload();
-  };
+  private handleReload =
+    (): void => {
+      window.location.reload();
+    };
 
   public render(): ReactNode {
-    if (
-      this.state.hasError
-    ) {
+    if (this.state.hasError) {
       return (
         <section
           className="remote-error-card"
@@ -65,29 +73,42 @@ class RemoteErrorBoundary
           </span>
 
           <h2>
-            Order Summary could not load
+            {this.props.title}
           </h2>
 
           <p>
-            Confirm that the Order MFE is
-            running on port 5174, then retry.
+            Confirm that{" "}
+            <strong>
+              {this.props.remoteName}
+            </strong>{" "}
+            is running on port{" "}
+            <strong>
+              {this.props.port}
+            </strong>
+            , then reload FulfillIQ.
           </p>
 
           {import.meta.env.DEV &&
             this.state.message && (
-            <small>
-              {this.state.message}
-            </small>
-          )}
+              <details className="remote-error-details">
+                <summary>
+                  Technical details
+                </summary>
+
+                <small>
+                  {this.state.message}
+                </small>
+              </details>
+            )}
 
           <button
             type="button"
             className="primary-button"
             onClick={
-              this.handleRetry
+              this.handleReload
             }
           >
-            Retry
+            Reload FulfillIQ
           </button>
         </section>
       );

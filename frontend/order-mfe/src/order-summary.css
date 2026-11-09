@@ -105,3 +105,18 @@
       1fr;
   }
 }
+
+.remote-empty-order {
+  margin: 0;
+
+  padding: 16px;
+
+  border: 1px dashed #cbd5e1;
+  border-radius: 9px;
+
+  color: #64748b;
+  background: #f8fafc;
+
+  font-size: 13px;
+  text-align: center;
+}

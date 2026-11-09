@@ -28,6 +28,17 @@ export default createModuleFederationConfig({
       entry:
         "http://localhost:5175/remoteEntry.js",
     },
+
+    manager_mfe: {
+      type:
+        "module",
+
+      name:
+        "manager_mfe",
+
+      entry:
+        "http://localhost:5176/remoteEntry.js",
+    },
   },
 
   shared: {

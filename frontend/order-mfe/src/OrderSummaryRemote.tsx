@@ -23,14 +23,17 @@ function OrderSummaryRemote({
   items,
 }: OrderSummaryRemoteProps) {
   return (
-    <section className="remote-order-summary">
+    <section
+      className="remote-order-summary"
+      aria-labelledby="order-summary-heading"
+    >
       <div className="remote-order-heading">
         <div>
           <span className="remote-order-label">
             Synthetic Order
           </span>
 
-          <h2>
+          <h2 id="order-summary-heading">
             {orderReference}
           </h2>
 
@@ -48,24 +51,36 @@ function OrderSummaryRemote({
         </span>
       </div>
 
-      <div className="remote-order-items">
-        {items.map(
-          item => (
-            <div
-              key={
-                item.productName
-              }
-              className="remote-order-item"
-            >
-              <span>
-                {item.productName}
-              </span>
+      <div
+        className="remote-order-items"
+        aria-label="Order items"
+      >
+        {items.length > 0 ? (
+          items.map(
+            (
+              item,
+              index
+            ) => (
+              <div
+                key={
+                  `${item.productName}-${index}`
+                }
+                className="remote-order-item"
+              >
+                <span>
+                  {item.productName}
+                </span>
 
-              <strong>
-                × {item.quantity}
-              </strong>
-            </div>
+                <strong>
+                  × {item.quantity}
+                </strong>
+              </div>
+            )
           )
+        ) : (
+          <p className="remote-empty-order">
+            No items are available for this order.
+          </p>
         )}
       </div>
     </section>
