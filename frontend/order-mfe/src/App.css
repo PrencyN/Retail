@@ -1,0 +1,55 @@
+#root {
+  min-height: 100vh;
+}
+
+.order-mfe-preview {
+  width:
+    min(
+      calc(100% - 32px),
+      980px
+    );
+
+  margin:
+    0 auto;
+
+  padding:
+    48px 0;
+}
+
+.order-mfe-preview header {
+  margin-bottom:
+    24px;
+}
+
+.order-mfe-preview header span {
+  color:
+    #2563eb;
+
+  font-size:
+    12px;
+
+  font-weight:
+    800;
+
+  letter-spacing:
+    0.08em;
+
+  text-transform:
+    uppercase;
+}
+
+.order-mfe-preview header h1 {
+  margin:
+    8px 0;
+
+  color:
+    #172033;
+}
+
+.order-mfe-preview header p {
+  margin:
+    0;
+
+  color:
+    #64748b;
+}

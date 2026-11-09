@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -11,15 +13,15 @@ import AiAssistant
 import CandidateLocationCard
   from "../components/CandidateLocationCard";
 
-import OrderSummary
-  from "../components/OrderSummary";
-
 import RecommendationCard
   from "../components/RecommendationCard";
 
 import RecommendationChangeBanner, {
   type SimulationChange,
 } from "../components/RecommendationChangeBanner";
+
+import RemoteErrorBoundary
+  from "../components/RemoteErrorBoundary";
 
 import StockSimulator
   from "../components/StockSimulator";
@@ -44,6 +46,14 @@ import type {
   FulfillmentDecision,
 } from "../types/fulfillment";
 
+const RemoteOrderSummary =
+  lazy(
+    () =>
+      import(
+        "order_mfe/OrderSummary"
+      )
+  );
+
 const ORDER_REFERENCE =
   "SYN-1001";
 
@@ -67,6 +77,32 @@ const HITECH_DEFAULT_RESERVED_QUANTITY =
 
 const HITECH_DEFAULT_REORDER_LEVEL =
   2;
+
+const orderItems = [
+  {
+    productName:
+      "Nike Black Performance Running Shoe",
+
+    quantity:
+      2,
+  },
+
+  {
+    productName:
+      "Reebok Grey Clothing 24",
+
+    quantity:
+      1,
+  },
+
+  {
+    productName:
+      "RetailIQ Red Electronics 25",
+
+    quantity:
+      1,
+  },
+];
 
 function FulfillmentPage() {
   const [
@@ -123,8 +159,13 @@ function FulfillmentPage() {
     useCallback(
       async (): Promise<void> => {
         try {
-          setLoading(true);
-          setError("");
+          setLoading(
+            true
+          );
+
+          setError(
+            ""
+          );
 
           const result =
             await fetchDecision();
@@ -139,10 +180,14 @@ function FulfillmentPage() {
               : "Unable to calculate fulfillment."
           );
         } finally {
-          setLoading(false);
+          setLoading(
+            false
+          );
         }
       },
-      [fetchDecision]
+      [
+        fetchDecision,
+      ]
     );
 
   async function recalculateAfterSimulation(
@@ -152,7 +197,9 @@ function FulfillmentPage() {
       decision;
 
     try {
-      setError("");
+      setError(
+        ""
+      );
 
       const newDecision =
         await fetchDecision();
@@ -223,8 +270,13 @@ function FulfillmentPage() {
       decision;
 
     try {
-      setResetting(true);
-      setError("");
+      setResetting(
+        true
+      );
+
+      setError(
+        ""
+      );
 
       await Promise.all([
         updateWorkload(
@@ -305,7 +357,9 @@ function FulfillmentPage() {
           : "Unable to reset the demo."
       );
     } finally {
-      setResetting(false);
+      setResetting(
+        false
+      );
     }
   }
 
@@ -313,7 +367,9 @@ function FulfillmentPage() {
     () => {
       void loadDecision();
     },
-    [loadDecision]
+    [
+      loadDecision,
+    ]
   );
 
   const hyd03 =
@@ -326,7 +382,9 @@ function FulfillmentPage() {
               candidate.locationCode ===
               KUKATPALLY_LOCATION_CODE
           ),
-      [decision]
+      [
+        decision,
+      ]
     );
 
   const busy =
@@ -359,8 +417,12 @@ function FulfillmentPage() {
             <button
               type="button"
               className="secondary-button"
-              onClick={resetDemo}
-              disabled={busy}
+              onClick={
+                resetDemo
+              }
+              disabled={
+                busy
+              }
             >
               {resetting
                 ? "Resetting..."
@@ -374,7 +436,9 @@ function FulfillmentPage() {
                 () =>
                   void loadDecision()
               }
-              disabled={busy}
+              disabled={
+                busy
+              }
             >
               {loading
                 ? "Calculating..."
@@ -384,7 +448,38 @@ function FulfillmentPage() {
         </div>
       </header>
 
-      <OrderSummary />
+      <RemoteErrorBoundary>
+        <Suspense
+          fallback={
+            <section className="remote-loading-card">
+              <div
+                className="spinner"
+                aria-hidden="true"
+              />
+
+              <p>
+                Loading Order Summary
+                micro-frontend...
+              </p>
+            </section>
+          }
+        >
+          <RemoteOrderSummary
+            orderReference={
+              ORDER_REFERENCE
+            }
+            customerName={
+              "Synthetic Customer"
+            }
+            fulfillmentZone={
+              "Hyderabad"
+            }
+            items={
+              orderItems
+            }
+          />
+        </Suspense>
+      </RemoteErrorBoundary>
 
       {simulationChange && (
         <RecommendationChangeBanner
@@ -420,7 +515,9 @@ function FulfillmentPage() {
               () =>
                 void loadDecision()
             }
-            disabled={busy}
+            disabled={
+              busy
+            }
           >
             Try again
           </button>

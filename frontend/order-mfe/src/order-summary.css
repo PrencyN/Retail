@@ -1,0 +1,107 @@
+.remote-order-summary {
+  display: grid;
+
+  grid-template-columns:
+    minmax(220px, 0.7fr)
+    minmax(300px, 1.3fr);
+
+  gap: 24px;
+
+  padding: 22px;
+
+  border: 1px solid #dbe4f0;
+  border-radius: 16px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 8px 24px
+    rgba(15, 23, 42, 0.05);
+}
+
+.remote-order-heading {
+  display: flex;
+
+  justify-content:
+    space-between;
+
+  align-items:
+    flex-start;
+
+  gap: 16px;
+}
+
+.remote-order-label {
+  color: #2563eb;
+
+  font-size: 11px;
+  font-weight: 800;
+
+  letter-spacing: 0.08em;
+
+  text-transform:
+    uppercase;
+}
+
+.remote-order-heading h2 {
+  margin: 6px 0;
+
+  color: #172033;
+
+  font-size: 24px;
+}
+
+.remote-order-heading p {
+  margin: 4px 0;
+
+  color: #64748b;
+
+  font-size: 13px;
+}
+
+.remote-badge {
+  padding: 5px 9px;
+
+  border-radius: 999px;
+
+  color: #1d4ed8;
+  background: #dbeafe;
+
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.remote-order-items {
+  display: grid;
+
+  gap: 9px;
+}
+
+.remote-order-item {
+  display: flex;
+
+  justify-content:
+    space-between;
+
+  gap: 16px;
+
+  padding: 11px 13px;
+
+  border-radius: 9px;
+
+  color: #334155;
+  background: #f8fafc;
+
+  font-size: 13px;
+}
+
+.remote-order-item strong {
+  color: #2563eb;
+}
+
+@media (max-width: 760px) {
+  .remote-order-summary {
+    grid-template-columns:
+      1fr;
+  }
+}

@@ -1566,3 +1566,64 @@ button:disabled {
     flex: 1;
   }
 }
+
+/* ======================================================
+   MICRO-FRONTEND LOADING AND ERROR STATES
+   ====================================================== */
+
+.remote-loading-card,
+.remote-error-card {
+  margin: 24px 0;
+  padding: 24px;
+
+  border: 1px solid #dbe4f0;
+  border-radius: 16px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 8px 24px
+    rgba(15, 23, 42, 0.05);
+}
+
+.remote-loading-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  color: #475569;
+}
+
+.remote-loading-card p {
+  margin: 0;
+}
+
+.remote-error-card {
+  border-color: #fecaca;
+
+  background: #fffafa;
+}
+
+.remote-error-card h2 {
+  margin: 6px 0 8px;
+
+  color: #991b1b;
+}
+
+.remote-error-card p {
+  margin: 0 0 12px;
+
+  color: #64748b;
+
+  line-height: 1.5;
+}
+
+.remote-error-card small {
+  display: block;
+
+  margin-bottom: 16px;
+
+  color: #b91c1c;
+
+  overflow-wrap: anywhere;
+}

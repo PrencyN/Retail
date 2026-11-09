@@ -1,7 +1,53 @@
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import {
+  defineConfig,
+} from "vite";
 
-// https://vite.dev/config/
+import react
+  from "@vitejs/plugin-react";
+
+import {
+  federation,
+} from "@module-federation/vite";
+
+import moduleFederationConfig
+  from "./module-federation.config.ts";
+
 export default defineConfig({
-  plugins: [react()],
-})
+  plugins: [
+    react(),
+
+    federation(
+      moduleFederationConfig
+    ),
+  ],
+
+  server: {
+    port:
+      5173,
+
+    strictPort:
+      true,
+
+    origin:
+      "http://localhost:5173",
+
+    cors:
+      true,
+  },
+
+  preview: {
+    port:
+      5173,
+
+    strictPort:
+      true,
+  },
+
+  build: {
+    target:
+      "chrome89",
+
+    chunkSizeWarningLimit:
+      600,
+  },
+});
