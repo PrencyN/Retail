@@ -24,6 +24,11 @@ env:
   GITLEAKS_VERSION: "8.30.1"
 
 jobs:
+
+  # =========================================================
+  # SCAN + THREAT MODEL
+  # =========================================================
+
   threat-model:
     name: Scan and generate risk register
 
@@ -35,8 +40,9 @@ jobs:
       contents: read
 
     steps:
+
       # =====================================================
-      # SOURCE
+      # CHECKOUT
       # =====================================================
 
       - name: Check out repository
@@ -61,27 +67,41 @@ jobs:
         run: |
           set -euo pipefail
 
-          python -m pip install --upgrade pip
+          python -m pip install \
+            --upgrade \
+            pip
 
           python -m pip install \
             -r security/threat-model/requirements.txt
 
-          python -m pip install semgrep
+          python -m pip install \
+            semgrep
 
       - name: Verify Python dependencies
         shell: bash
         run: |
           set -euo pipefail
 
-          python -c "
+          python - <<'PY'
           import openpyxl
           import requests
           import yaml
 
-          print('openpyxl:', openpyxl.__version__)
-          print('requests:', requests.__version__)
-          print('PyYAML:', yaml.__version__)
-          "
+          print(
+              "openpyxl:",
+              openpyxl.__version__
+          )
+
+          print(
+              "requests:",
+              requests.__version__
+          )
+
+          print(
+              "PyYAML:",
+              yaml.__version__
+          )
+          PY
 
           semgrep --version
 
@@ -134,7 +154,7 @@ jobs:
           gitleaks version
 
       # =====================================================
-      # VALIDATION
+      # THREAT MODEL VALIDATION
       # =====================================================
 
       - name: Compile threat-model Python files
@@ -156,11 +176,9 @@ jobs:
           command -v gitleaks
 
       # =====================================================
-      # PULL REQUEST EXECUTION
+      # PULL REQUEST THREAT MODEL
       #
-      # No repository secrets are provided to this step.
-      # The AI explanation layer uses its deterministic
-      # fallback when Azure OpenAI variables are absent.
+      # No Azure OpenAI secrets are supplied to PR execution.
       # =====================================================
 
       - name: Run threat model for pull request
@@ -174,10 +192,10 @@ jobs:
           python security/threat-model/run.py
 
       # =====================================================
-      # TRUSTED BRANCH EXECUTION
+      # TRUSTED MASTER / MANUAL THREAT MODEL
       #
-      # Azure OpenAI secrets are supplied only for push or
-      # manually dispatched trusted executions.
+      # Azure OpenAI secrets are provided only to trusted
+      # branch/manual execution.
       # =====================================================
 
       - name: Run threat model for trusted branch
@@ -202,6 +220,11 @@ jobs:
         if: always()
         shell: bash
         run: |
+          set -euo pipefail
+
+          printf '%s' "${{ github.event_name }}" \
+            > /tmp/event-name
+
           python - <<'PY'
           import json
           from pathlib import Path
@@ -219,6 +242,55 @@ jobs:
           else:
               summary = {}
 
+          event_name = (
+              Path("/tmp/event-name")
+              .read_text(
+                  encoding="utf-8"
+              )
+              .strip()
+          )
+
+          total_active = summary.get(
+              "totalActive",
+              0,
+          )
+
+          scanner_risks = summary.get(
+              "scannerRisks",
+              0,
+          )
+
+          architectural_risks = summary.get(
+              "architecturalRisks",
+              0,
+          )
+
+          new_critical = len(
+              summary.get(
+                  "newCritical",
+                  [],
+              )
+          )
+
+          severity_increased = len(
+              summary.get(
+                  "severityIncreased",
+                  [],
+              )
+          )
+
+          high_confidence_secret = (
+              summary.get(
+                  "highConfidenceSecret",
+                  False,
+              )
+          )
+
+          workbook = summary.get(
+              "workbook",
+              "not generated",
+          )
+
           lines = [
               "# Threat risk register",
               "",
@@ -226,41 +298,48 @@ jobs:
               "",
               (
                   "- Total active risks: "
-                  f"{summary.get('totalActive', 0)}"
+                  f"{total_active}"
               ),
               (
                   "- Scanner-generated risks: "
-                  f"{summary.get('scannerRisks', 0)}"
+                  f"{scanner_risks}"
               ),
               (
                   "- Architectural risks: "
-                  f"{summary.get('architecturalRisks', 0)}"
+                  f"{architectural_risks}"
               ),
               (
                   "- New Critical risks: "
-                  f"{len(summary.get('newCritical', []))}"
+                  f"{new_critical}"
               ),
               (
                   "- Severity increases: "
-                  f"{len(summary.get('severityIncreased', []))}"
+                  f"{severity_increased}"
               ),
               (
                   "- High-confidence secret: "
-                  f"{summary.get('highConfidenceSecret', False)}"
+                  f"{high_confidence_secret}"
               ),
               (
                   "- Workbook: "
-                  f"`{summary.get('workbook', 'not generated')}`"
+                  f"`{workbook}`"
               ),
               "",
               "## Execution context",
               "",
-              f"- Event: `{Path('/tmp/event-name').read_text().strip()}`"
-              if Path("/tmp/event-name").exists()
-              else "- Event: unavailable",
-              "- Pull-request jobs use read-only repository permissions.",
-              "- Azure OpenAI secrets are not provided to pull-request execution.",
-              "- Workbook commits occur only after trusted master pushes.",
+              f"- Event: `{event_name}`",
+              (
+                  "- Pull-request jobs use "
+                  "read-only repository permissions."
+              ),
+              (
+                  "- Azure OpenAI secrets are not "
+                  "provided to pull-request execution."
+              ),
+              (
+                  "- Workbook commits occur only "
+                  "after trusted master pushes."
+              ),
           ]
 
           Path(
@@ -271,14 +350,11 @@ jobs:
           )
           PY
 
-          printf '%s' "${{ github.event_name }}" \
-            > /tmp/event-name
-
           cat /tmp/threat-model-summary.md \
             >> "$GITHUB_STEP_SUMMARY"
 
       # =====================================================
-      # ARTIFACT
+      # ARTIFACTS
       # =====================================================
 
       - name: Upload threat-model artifacts
@@ -297,7 +373,7 @@ jobs:
             .threat-model/scan-results/gitleaks.json
 
       # =====================================================
-      # SECURITY GATE
+      # SECURITY GATES
       # =====================================================
 
       - name: Enforce pull-request security gate
@@ -320,14 +396,12 @@ jobs:
           echo "Threat-model security gate failed for the trusted branch."
           exit 1
 
-  # =======================================================
-  # TRUSTED WORKBOOK COMMIT
+  # =========================================================
+  # COMMIT UPDATED WORKBOOK
   #
-  # This job:
-  # - never runs for a pull request
-  # - runs only after a successful master push
-  # - is the only job with contents: write
-  # =======================================================
+  # This job never runs for pull requests.
+  # It is the only job with contents: write.
+  # =========================================================
 
   commit-register:
     name: Commit updated risk register
@@ -347,6 +421,11 @@ jobs:
       contents: write
 
     steps:
+
+      # =====================================================
+      # TRUSTED CHECKOUT
+      # =====================================================
+
       - name: Check out trusted master branch
         uses: actions/checkout@v4
         with:
@@ -354,11 +433,42 @@ jobs:
           ref: master
           persist-credentials: true
 
+      # =====================================================
+      # PYTHON FOR WORKBOOK VALIDATION
+      #
+      # This fixes:
+      #
+      # ModuleNotFoundError:
+      # No module named 'openpyxl'
+      # =====================================================
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install workbook validation dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python -m pip install \
+            --disable-pip-version-check \
+            openpyxl==3.1.5
+
+      # =====================================================
+      # DOWNLOAD GENERATED REGISTER
+      # =====================================================
+
       - name: Download generated risk register
         uses: actions/download-artifact@v4
         with:
           name: threat-risk-register-${{ github.run_id }}
           path: .
+
+      # =====================================================
+      # VERIFY WORKBOOK
+      # =====================================================
 
       - name: Verify generated workbook
         shell: bash
@@ -385,7 +495,10 @@ jobs:
               data_only=True,
           )
 
-          if "Risk Register" not in workbook.sheetnames:
+          if (
+              "Risk Register"
+              not in workbook.sheetnames
+          ):
               raise SystemExit(
                   "Risk Register worksheet is missing."
               )
@@ -400,9 +513,17 @@ jobs:
               "Status",
               "Component",
               "Service",
+              "Source File",
+              "Evidence",
+              "Scanner",
+              "Scanner Rule",
+              "STRIDE Category",
               "Threat Scenario",
+              "Existing Controls",
+              "Recommended Mitigation",
               "Risk Score",
               "Severity",
+              "Confidence",
           }
 
           headers = {
@@ -412,7 +533,8 @@ jobs:
           }
 
           missing = (
-              expected_headers - headers
+              expected_headers
+              - headers
           )
 
           if missing:
@@ -423,18 +545,24 @@ jobs:
                   )
               )
 
+          risk_count = max(
+              0,
+              worksheet.max_row - 1,
+          )
+
           print(
               "Workbook validation passed."
           )
 
           print(
               "Risk rows:",
-              max(
-                  0,
-                  worksheet.max_row - 1,
-              ),
+              risk_count,
           )
           PY
+
+      # =====================================================
+      # COMMIT WORKBOOK ONLY
+      # =====================================================
 
       - name: Commit updated workbook
         shell: bash
