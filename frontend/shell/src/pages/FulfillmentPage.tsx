@@ -344,23 +344,39 @@ function FulfillmentPage() {
       decision;
 
     try {
-      setResetting(true);
-      setError("");
+      setResetting(
+        true
+      );
 
-      await Promise.all([
-        updateWorkload(
-          KUKATPALLY_LOCATION_CODE,
-          KUKATPALLY_DEFAULT_WORKLOAD
-        ),
+      setError(
+        ""
+      );
 
-        updateInventory(
-          ELECTRONICS_PRODUCT_ID,
-          HITECH_LOCATION_CODE,
-          HITECH_DEFAULT_AVAILABLE_QUANTITY,
-          HITECH_DEFAULT_RESERVED_QUANTITY,
-          HITECH_DEFAULT_REORDER_LEVEL
-        ),
-      ]);
+      /*
+       * Perform reset mutations sequentially.
+       *
+       * This avoids partially overlapping reset requests
+       * and ensures that inventory optimistic-concurrency
+       * handling completes before recalculation.
+       */
+
+      await updateWorkload(
+        KUKATPALLY_LOCATION_CODE,
+        KUKATPALLY_DEFAULT_WORKLOAD
+      );
+
+      await updateInventory(
+        ELECTRONICS_PRODUCT_ID,
+        HITECH_LOCATION_CODE,
+        HITECH_DEFAULT_AVAILABLE_QUANTITY,
+        HITECH_DEFAULT_RESERVED_QUANTITY,
+        HITECH_DEFAULT_REORDER_LEVEL
+      );
+
+      /*
+       * Recalculate only after both reset operations have
+       * completed successfully.
+       */
 
       const newDecision =
         await fetchDecision();
@@ -418,13 +434,36 @@ function FulfillmentPage() {
             .recommendedLocationCode,
       });
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
+      const message =
+        requestError instanceof
+          Error
           ? requestError.message
-          : "Unable to reset the demo."
+          : "Unable to reset the demo.";
+
+      setError(
+        message
       );
+
+      /*
+       * Refresh the displayed decision after a partial
+       * failure. This ensures the UI reflects actual
+       * backend state rather than stale local state.
+       */
+
+      try {
+        const currentDecision =
+          await fetchDecision();
+
+        setDecision(
+          currentDecision
+        );
+      } catch {
+        // Preserve the original reset failure message.
+      }
     } finally {
-      setResetting(false);
+      setResetting(
+        false
+      );
     }
   }
 

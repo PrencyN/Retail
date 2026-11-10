@@ -3,15 +3,29 @@ import {
   test as setup,
 } from "@playwright/test";
 
+import fs
+  from "node:fs/promises";
+
 import path
   from "node:path";
 
-const authenticationStateFile =
+const authDirectory =
   path.join(
     process.cwd(),
     "playwright",
-    ".auth",
+    ".auth"
+  );
+
+const authenticationStateFile =
+  path.join(
+    authDirectory,
     "user.json"
+  );
+
+const sessionStorageFile =
+  path.join(
+    authDirectory,
+    "session-storage.json"
   );
 
 setup.describe(
@@ -26,6 +40,14 @@ setup.describe(
           180_000
         );
 
+        await fs.mkdir(
+          authDirectory,
+          {
+            recursive:
+              true,
+          }
+        );
+
         await page.goto(
           "http://localhost:5173",
           {
@@ -33,13 +55,6 @@ setup.describe(
               "domcontentloaded",
           }
         );
-
-        /*
-         * The page may already be authenticated if
-         * localStorage contains a valid MSAL session.
-         *
-         * Otherwise, click the Microsoft login button.
-         */
 
         const resetDemoButton =
           page.getByRole(
@@ -62,7 +77,10 @@ setup.describe(
         const dashboardAlreadyVisible =
           await resetDemoButton
             .isVisible()
-            .catch(() => false);
+            .catch(
+              () =>
+                false
+            );
 
         if (!dashboardAlreadyVisible) {
           await expect(
@@ -73,14 +91,6 @@ setup.describe(
           });
 
           await signInButton.click();
-
-          /*
-           * Complete the Microsoft login manually in
-           * the headed browser.
-           *
-           * Playwright waits until Microsoft redirects
-           * back and the protected dashboard loads.
-           */
         }
 
         await page.waitForURL(
@@ -113,11 +123,6 @@ setup.describe(
             60_000,
         });
 
-        /*
-         * Confirm that authenticated API calls have
-         * completed before storing browser state.
-         */
-
         await expect(
           page.getByText(
             "Kukatpally Store",
@@ -131,14 +136,86 @@ setup.describe(
             30_000,
         });
 
+        /*
+         * Save cookies and localStorage using Playwright's
+         * standard storage-state format.
+         */
         await page.context()
           .storageState({
             path:
               authenticationStateFile,
           });
 
+        /*
+         * Playwright storageState does not persist
+         * browser sessionStorage. FulfillIQ/MSAL uses
+         * sessionStorage, so persist it separately.
+         *
+         * Do not log these values because authentication
+         * tokens may be present.
+         */
+        const sessionStorageValues =
+          await page.evaluate(
+            () => {
+              const values:
+                Record<
+                  string,
+                  string
+                > =
+                {};
+
+              for (
+                let index = 0;
+                index <
+                window.sessionStorage.length;
+                index++
+              ) {
+                const key =
+                  window.sessionStorage.key(
+                    index
+                  );
+
+                if (!key) {
+                  continue;
+                }
+
+                const value =
+                  window.sessionStorage.getItem(
+                    key
+                  );
+
+                if (
+                  value !== null
+                ) {
+                  values[key] =
+                    value;
+                }
+              }
+
+              return values;
+            }
+          );
+
+        if (
+          Object.keys(
+            sessionStorageValues
+          ).length === 0
+        ) {
+          throw new Error(
+            "Microsoft authentication completed, but no sessionStorage state was available to save."
+          );
+        }
+
+        await fs.writeFile(
+          sessionStorageFile,
+          JSON.stringify(
+            sessionStorageValues
+          ),
+          "utf-8"
+        );
+
         console.log(
-          `Authentication state saved to ${authenticationStateFile}`
+          "Playwright authentication state saved successfully."
         );
       }
     );
