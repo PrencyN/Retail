@@ -12,42 +12,63 @@ import {
 import moduleFederationConfig
   from "./module-federation.config.ts";
 
-export default defineConfig({
-  base:
-    "http://localhost:5174/",
+export default defineConfig(
+  ({
+    command,
+  }) => {
+    const isDevelopment =
+      command === "serve";
 
-  plugins: [
-    react(),
+    return {
+      /*
+       * Development:
+       * Use the explicit localhost origin so the shell
+       * can consume the Order MFE on port 5174.
+       *
+       * Production:
+       * Use the deployed site's own origin. Relative "/"
+       * paths allow Cloudflare Pages to serve all generated
+       * Module Federation chunks correctly.
+       */
+      base:
+        isDevelopment
+          ? "http://localhost:5174/"
+          : "/",
 
-    federation(
-      moduleFederationConfig
-    ),
-  ],
+      plugins: [
+        react(),
 
-  server: {
-    port:
-      5174,
+        federation(
+          moduleFederationConfig
+        ),
+      ],
 
-    strictPort:
-      true,
+      server: {
+        port:
+          5174,
 
-    origin:
-      "http://localhost:5174",
+        strictPort:
+          true,
 
-    cors:
-      true,
-  },
+        origin:
+          "http://localhost:5174",
 
-  preview: {
-    port:
-      5174,
+        cors:
+          true,
+      },
 
-    strictPort:
-      true,
-  },
+      preview: {
+        port:
+          5174,
 
-  build: {
-    target:
-      "chrome89",
-  },
-});
+        strictPort:
+          true,
+      },
+
+      build: {
+        target:
+          "chrome89",
+      },
+    };
+  }
+);
