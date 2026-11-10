@@ -36,14 +36,12 @@ def finding_fingerprint(finding) -> str:
     ])
 
 
-def architecture_fingerprint(threat: ArchitecturalThreat) -> str:
+def architecture_fingerprint(
+    threat: ArchitecturalThreat,
+) -> str:
     return _fingerprint([
         "architecture",
         threat.threat_id,
-        threat.component,
-        threat.service,
-        threat.source_file,
-        threat.stride_category,
     ])
 
 
