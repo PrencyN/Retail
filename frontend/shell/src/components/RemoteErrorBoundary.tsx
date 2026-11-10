@@ -50,9 +50,20 @@ class RemoteErrorBoundary
     errorInfo: ErrorInfo
   ): void {
     console.error(
-      `Unable to load ${this.props.remoteName}.`,
-      error,
-      errorInfo
+      "Unable to load remote micro-frontend.",
+      {
+        remoteName:
+          this.props.remoteName,
+
+        errorName:
+          error.name,
+
+        errorMessage:
+          error.message,
+
+        componentStack:
+          errorInfo.componentStack,
+      }
     );
   }
 
