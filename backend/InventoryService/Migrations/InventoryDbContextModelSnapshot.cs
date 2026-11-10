@@ -43,6 +43,10 @@ namespace InventoryService.Migrations
                     b.Property<int>("ReservedQuantity")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("LocationId");

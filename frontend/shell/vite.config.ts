@@ -1,5 +1,6 @@
 import {
   defineConfig,
+  loadEnv,
 } from "vite";
 
 import react
@@ -9,45 +10,107 @@ import {
   federation,
 } from "@module-federation/vite";
 
-import moduleFederationConfig
-  from "./module-federation.config.ts";
+import {
+  createShellFederationConfig,
+} from "./module-federation.config.js";
 
-export default defineConfig({
-  plugins: [
-    react(),
+import {
+  createTrustedRemoteEntries,
+} from "./federation/trustedRemotes.js";
 
-    federation(
-      moduleFederationConfig
-    ),
-  ],
+export default defineConfig(
+  ({
+    mode,
+  }) => {
+    const environment =
+      loadEnv(
+        mode,
+        process.cwd(),
+        "VITE_",
+      );
 
-  server: {
-    port:
-      5173,
+    const remoteEntries =
+      createTrustedRemoteEntries(
+        environment,
+        mode,
+      );
 
-    strictPort:
-      true,
+    const federationConfig =
+      createShellFederationConfig(
+        remoteEntries,
+      );
 
-    origin:
-      "http://localhost:5173",
+    return {
+      plugins: [
+        react(),
 
-    cors:
-      true,
+        federation(
+          federationConfig,
+        ),
+      ],
+
+      server: {
+        port:
+          5173,
+
+        strictPort:
+          true,
+
+        origin:
+          "http://localhost:5173",
+
+        cors: {
+          origin:
+            "http://localhost:5173",
+
+          methods: [
+            "GET",
+            "HEAD",
+            "OPTIONS",
+          ],
+        },
+
+        headers: {
+          "X-Content-Type-Options":
+            "nosniff",
+
+          "Referrer-Policy":
+            "strict-origin-when-cross-origin",
+
+          "Permissions-Policy":
+            "camera=(), microphone=(), geolocation=()",
+        },
+      },
+
+      preview: {
+        port:
+          5173,
+
+        strictPort:
+          true,
+
+        headers: {
+          "X-Content-Type-Options":
+            "nosniff",
+
+          "Referrer-Policy":
+            "strict-origin-when-cross-origin",
+
+          "Permissions-Policy":
+            "camera=(), microphone=(), geolocation=()",
+        },
+      },
+
+      build: {
+        target:
+          "chrome89",
+
+        chunkSizeWarningLimit:
+          600,
+
+        sourcemap:
+          false,
+      },
+    };
   },
-
-  preview: {
-    port:
-      5173,
-
-    strictPort:
-      true,
-  },
-
-  build: {
-    target:
-      "chrome89",
-
-    chunkSizeWarningLimit:
-      600,
-  },
-});
+);

@@ -1,0 +1,189 @@
+rules:
+
+  - id: aspnet-controller-without-authorize
+    message: >
+      ASP.NET controller does not declare an authorization requirement.
+      Confirm whether the controller is intentionally anonymous.
+    severity: WARNING
+
+    languages:
+      - csharp
+
+    patterns:
+      - pattern: |
+          [ApiController]
+          class $C : ControllerBase
+          {
+            ...
+          }
+
+      - pattern-not-inside: |
+          [Authorize(...)]
+          class $C : ControllerBase
+          {
+            ...
+          }
+
+    metadata:
+      confidence: MEDIUM
+      cwe:
+        - CWE-862
+      owasp:
+        - A01:2021
+
+
+  - id: aspnet-permissive-cors
+    message: >
+      AllowAnyOrigin creates a permissive CORS policy.
+      Confirm that unrestricted cross-origin requests are intentional.
+    severity: WARNING
+
+    languages:
+      - csharp
+
+    pattern: $POLICY.AllowAnyOrigin(...)
+
+    metadata:
+      confidence: HIGH
+      cwe:
+        - CWE-346
+      owasp:
+        - A05:2021
+
+
+  - id: dotnet-sensitive-log
+    message: >
+      Potential sensitive value written to application logs.
+      Tokens, credentials, authorization headers, passwords,
+      connection strings, and secrets must not be logged.
+    severity: ERROR
+
+    languages:
+      - csharp
+
+    patterns:
+      - pattern-either:
+
+          - pattern: |
+              $LOGGER.LogInformation(
+                $FORMAT,
+                ...,
+                $VALUE,
+                ...
+              )
+
+          - pattern: |
+              $LOGGER.LogWarning(
+                $FORMAT,
+                ...,
+                $VALUE,
+                ...
+              )
+
+          - pattern: |
+              $LOGGER.LogError(
+                $FORMAT,
+                ...,
+                $VALUE,
+                ...
+              )
+
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: (?i).*(token|authorization|connection|string|secret|password|apikey|api_key|credential).*
+
+    metadata:
+      confidence: MEDIUM
+      cwe:
+        - CWE-532
+      owasp:
+        - A09:2021
+
+
+  - id: react-dangerously-set-inner-html
+    message: >
+      Rendering HTML directly with dangerouslySetInnerHTML can introduce
+      cross-site scripting. Sanitize untrusted HTML before rendering it.
+    severity: ERROR
+
+    languages:
+      - typescript
+      - javascript
+
+    pattern: |
+      <$ELEMENT dangerouslySetInnerHTML=$VALUE ... />
+
+    metadata:
+      confidence: HIGH
+      cwe:
+        - CWE-79
+      owasp:
+        - A03:2021
+
+
+  - id: browser-token-local-storage
+    message: >
+      Authentication or access token stored in localStorage can be exposed
+      if the application contains an XSS vulnerability.
+    severity: ERROR
+
+    languages:
+      - typescript
+      - javascript
+
+    patterns:
+      - pattern: |
+          localStorage.setItem($KEY, $VALUE)
+
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: (?i).*(token|auth|access|id).*
+
+    metadata:
+      confidence: HIGH
+      cwe:
+        - CWE-922
+      owasp:
+        - A02:2021
+
+
+  - id: ai-prompt-direct-request-input
+    message: >
+      Request-controlled data appears to be inserted directly into an AI
+      prompt. Validate, constrain, and clearly delimit untrusted input before
+      sending it to the model.
+    severity: WARNING
+
+    languages:
+      - csharp
+
+    patterns:
+
+      - pattern-either:
+
+          - pattern: |
+              $BUILDER.Append($REQUEST.$FIELD)
+
+          - pattern: |
+              $BUILDER.AppendLine($REQUEST.$FIELD)
+
+          - pattern: |
+              $PROMPT += $REQUEST.$FIELD
+
+          - pattern: |
+              $PROMPT = $REQUEST.$FIELD
+
+      - metavariable-regex:
+          metavariable: $REQUEST
+          regex: (?i).*(request|input|command|query|dto|payload|model).*
+
+    paths:
+      include:
+        - /backend/AIService/**
+
+    metadata:
+      confidence: MEDIUM
+      cwe:
+        - CWE-20
+      owasp:
+        - LLM01:2025

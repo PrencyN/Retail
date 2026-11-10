@@ -1,0 +1,466 @@
+name: Threat risk register
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - master
+
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: threat-risk-register-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  TRIVY_VERSION: "0.76.2"
+  GITLEAKS_VERSION: "8.30.1"
+
+jobs:
+  threat-model:
+    name: Scan and generate risk register
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+
+    steps:
+      # =====================================================
+      # SOURCE
+      # =====================================================
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # =====================================================
+      # PYTHON
+      # =====================================================
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: security/threat-model/requirements.txt
+
+      - name: Install threat-model dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python -m pip install --upgrade pip
+
+          python -m pip install \
+            -r security/threat-model/requirements.txt
+
+          python -m pip install semgrep
+
+      - name: Verify Python dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python -c "
+          import openpyxl
+          import requests
+          import yaml
+
+          print('openpyxl:', openpyxl.__version__)
+          print('requests:', requests.__version__)
+          print('PyYAML:', yaml.__version__)
+          "
+
+          semgrep --version
+
+      # =====================================================
+      # TRIVY
+      # =====================================================
+
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@v0.2.3
+        with:
+          version: v${{ env.TRIVY_VERSION }}
+          cache: true
+
+      - name: Verify Trivy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          trivy --version
+
+      # =====================================================
+      # GITLEAKS
+      # =====================================================
+
+      - name: Install Gitleaks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ARCHIVE_NAME="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+
+          curl \
+            --fail \
+            --location \
+            --silent \
+            --show-error \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${ARCHIVE_NAME}" \
+            --output "${RUNNER_TEMP}/${ARCHIVE_NAME}"
+
+          tar \
+            -xzf "${RUNNER_TEMP}/${ARCHIVE_NAME}" \
+            -C "${RUNNER_TEMP}" \
+            gitleaks
+
+          install \
+            -m 0755 \
+            "${RUNNER_TEMP}/gitleaks" \
+            "/usr/local/bin/gitleaks"
+
+          gitleaks version
+
+      # =====================================================
+      # VALIDATION
+      # =====================================================
+
+      - name: Compile threat-model Python files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python -m compileall \
+            security/threat-model
+
+      - name: Verify scanner executables
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          command -v python
+          command -v semgrep
+          command -v trivy
+          command -v gitleaks
+
+      # =====================================================
+      # PULL REQUEST EXECUTION
+      #
+      # No repository secrets are provided to this step.
+      # The AI explanation layer uses its deterministic
+      # fallback when Azure OpenAI variables are absent.
+      # =====================================================
+
+      - name: Run threat model for pull request
+        id: threat_model_pr
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python security/threat-model/run.py
+
+      # =====================================================
+      # TRUSTED BRANCH EXECUTION
+      #
+      # Azure OpenAI secrets are supplied only for push or
+      # manually dispatched trusted executions.
+      # =====================================================
+
+      - name: Run threat model for trusted branch
+        id: threat_model_trusted
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        shell: bash
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+        run: |
+          set -euo pipefail
+
+          python security/threat-model/run.py
+
+      # =====================================================
+      # SUMMARY
+      # =====================================================
+
+      - name: Add threat-model workflow summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          summary_path = Path(
+              ".threat-model/summary.json"
+          )
+
+          if summary_path.exists():
+              summary = json.loads(
+                  summary_path.read_text(
+                      encoding="utf-8"
+                  )
+              )
+          else:
+              summary = {}
+
+          lines = [
+              "# Threat risk register",
+              "",
+              "## Results",
+              "",
+              (
+                  "- Total active risks: "
+                  f"{summary.get('totalActive', 0)}"
+              ),
+              (
+                  "- Scanner-generated risks: "
+                  f"{summary.get('scannerRisks', 0)}"
+              ),
+              (
+                  "- Architectural risks: "
+                  f"{summary.get('architecturalRisks', 0)}"
+              ),
+              (
+                  "- New Critical risks: "
+                  f"{len(summary.get('newCritical', []))}"
+              ),
+              (
+                  "- Severity increases: "
+                  f"{len(summary.get('severityIncreased', []))}"
+              ),
+              (
+                  "- High-confidence secret: "
+                  f"{summary.get('highConfidenceSecret', False)}"
+              ),
+              (
+                  "- Workbook: "
+                  f"`{summary.get('workbook', 'not generated')}`"
+              ),
+              "",
+              "## Execution context",
+              "",
+              f"- Event: `{Path('/tmp/event-name').read_text().strip()}`"
+              if Path("/tmp/event-name").exists()
+              else "- Event: unavailable",
+              "- Pull-request jobs use read-only repository permissions.",
+              "- Azure OpenAI secrets are not provided to pull-request execution.",
+              "- Workbook commits occur only after trusted master pushes.",
+          ]
+
+          Path(
+              "/tmp/threat-model-summary.md"
+          ).write_text(
+              "\n".join(lines) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+          printf '%s' "${{ github.event_name }}" \
+            > /tmp/event-name
+
+          cat /tmp/threat-model-summary.md \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      # =====================================================
+      # ARTIFACT
+      # =====================================================
+
+      - name: Upload threat-model artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: threat-risk-register-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 30
+          include-hidden-files: true
+          path: |
+            docs/security/Threat-Risk-Register.xlsx
+            .threat-model/summary.json
+            .threat-model/scan-results/semgrep.json
+            .threat-model/scan-results/trivy.json
+            .threat-model/scan-results/gitleaks.json
+
+      # =====================================================
+      # SECURITY GATE
+      # =====================================================
+
+      - name: Enforce pull-request security gate
+        if: >
+          always() &&
+          github.event_name == 'pull_request' &&
+          steps.threat_model_pr.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "Threat-model security gate failed for the pull request."
+          exit 1
+
+      - name: Enforce trusted-branch security gate
+        if: >
+          always() &&
+          github.event_name != 'pull_request' &&
+          steps.threat_model_trusted.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "Threat-model security gate failed for the trusted branch."
+          exit 1
+
+  # =======================================================
+  # TRUSTED WORKBOOK COMMIT
+  #
+  # This job:
+  # - never runs for a pull request
+  # - runs only after a successful master push
+  # - is the only job with contents: write
+  # =======================================================
+
+  commit-register:
+    name: Commit updated risk register
+
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/master'
+
+    needs:
+      - threat-model
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out trusted master branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: master
+          persist-credentials: true
+
+      - name: Download generated risk register
+        uses: actions/download-artifact@v4
+        with:
+          name: threat-risk-register-${{ github.run_id }}
+          path: .
+
+      - name: Verify generated workbook
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -f \
+            docs/security/Threat-Risk-Register.xlsx
+
+          test -s \
+            docs/security/Threat-Risk-Register.xlsx
+
+          python - <<'PY'
+          from openpyxl import load_workbook
+
+          path = (
+              "docs/security/"
+              "Threat-Risk-Register.xlsx"
+          )
+
+          workbook = load_workbook(
+              path,
+              read_only=True,
+              data_only=True,
+          )
+
+          if "Risk Register" not in workbook.sheetnames:
+              raise SystemExit(
+                  "Risk Register worksheet is missing."
+              )
+
+          worksheet = workbook[
+              "Risk Register"
+          ]
+
+          expected_headers = {
+              "Risk ID",
+              "Fingerprint",
+              "Status",
+              "Component",
+              "Service",
+              "Threat Scenario",
+              "Risk Score",
+              "Severity",
+          }
+
+          headers = {
+              cell.value
+              for cell in worksheet[1]
+              if cell.value
+          }
+
+          missing = (
+              expected_headers - headers
+          )
+
+          if missing:
+              raise SystemExit(
+                  "Workbook is missing headers: "
+                  + ", ".join(
+                      sorted(missing)
+                  )
+              )
+
+          print(
+              "Workbook validation passed."
+          )
+
+          print(
+              "Risk rows:",
+              max(
+                  0,
+                  worksheet.max_row - 1,
+              ),
+          )
+          PY
+
+      - name: Commit updated workbook
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config \
+            user.name \
+            "github-actions[bot]"
+
+          git config \
+            user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add \
+            docs/security/Threat-Risk-Register.xlsx
+
+          if git diff --cached --quiet
+          then
+            echo "Risk register has no changes."
+            exit 0
+          fi
+
+          git commit \
+            -m "security: update automated threat risk register [skip ci]"
+
+          git push \
+            origin \
+            HEAD:master

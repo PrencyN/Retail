@@ -1,0 +1,39 @@
+project:
+  name: Retail / FulfillIQ
+  repository: PrencyN/Retail
+  workbook: docs/security/Threat-Risk-Register.xlsx
+  state_file: .threat-model/state.json
+
+scan:
+  include:
+    - backend
+    - frontend
+    - .github/workflows
+  exclude:
+    - "**/node_modules/**"
+    - "**/bin/**"
+    - "**/obj/**"
+    - "**/dist/**"
+    - "**/test-results/**"
+    - "**/playwright-report/**"
+    - "**/playwright/.auth/**"
+  context_lines: 3
+
+architecture:
+  enabled: true
+  evidence_roots:
+    - backend
+    - frontend
+    - .github/workflows
+
+risk:
+  fail_on_new_critical: true
+  fail_on_high_confidence_secret: true
+  missing_scans_before_resolved_candidate: 2
+
+ai:
+  enabled: true
+  endpoint_env: AZURE_OPENAI_ENDPOINT
+  api_key_env: AZURE_OPENAI_API_KEY
+  deployment_env: AZURE_OPENAI_DEPLOYMENT
+  api_version: "2024-10-21"

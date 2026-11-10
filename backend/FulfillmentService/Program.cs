@@ -9,20 +9,12 @@ using Microsoft.Identity.Web;
 var builder =
     WebApplication.CreateBuilder(args);
 
-// =======================================================
-// MICROSOFT ENTRA ID AUTHENTICATION
-// =======================================================
-
 builder.Services
     .AddAuthentication(
         JwtBearerDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApi(
         builder.Configuration,
         "AzureAd");
-
-// =======================================================
-// AUTHORIZATION
-// =======================================================
 
 builder.Services.AddAuthorization(
     options =>
@@ -39,71 +31,40 @@ builder.Services.AddAuthorization(
             });
     });
 
-// =======================================================
-// DOMAIN SERVICES
-// =======================================================
-
 builder.Services.AddSingleton<
     FulfillmentScorer>();
 
 builder.Services.AddScoped<
     FulfillmentOrchestrator>();
 
-// =======================================================
-// ORDER SERVICE CLIENT
-// =======================================================
+builder.Services.AddScoped<
+    DecisionAuditService>();
 
 builder.Services.AddHttpClient<
     OrderServiceClient>(
     client =>
     {
-        var baseUrl =
-            builder.Configuration[
-                "Services:OrderService"];
-
-        if (string.IsNullOrWhiteSpace(
-                baseUrl))
-        {
-            throw new InvalidOperationException(
-                "OrderService URL is missing.");
-        }
-
         client.BaseAddress =
-            new Uri(baseUrl);
+            GetRequiredServiceUri(
+                builder.Configuration,
+                "Services:OrderService");
 
         client.Timeout =
             TimeSpan.FromSeconds(5);
     });
-
-// =======================================================
-// INVENTORY SERVICE CLIENT
-// =======================================================
 
 builder.Services.AddHttpClient<
     InventoryServiceClient>(
     client =>
     {
-        var baseUrl =
-            builder.Configuration[
-                "Services:InventoryService"];
-
-        if (string.IsNullOrWhiteSpace(
-                baseUrl))
-        {
-            throw new InvalidOperationException(
-                "InventoryService URL is missing.");
-        }
-
         client.BaseAddress =
-            new Uri(baseUrl);
+            GetRequiredServiceUri(
+                builder.Configuration,
+                "Services:InventoryService");
 
         client.Timeout =
             TimeSpan.FromSeconds(5);
     });
-
-// =======================================================
-// CORS
-// =======================================================
 
 builder.Services.AddCors(
     options =>
@@ -120,16 +81,8 @@ builder.Services.AddCors(
             });
     });
 
-// =======================================================
-// BUILD APP
-// =======================================================
-
 var app =
     builder.Build();
-
-// =======================================================
-// MIDDLEWARE
-// =======================================================
 
 app.UseCors(
     "ReactApp");
@@ -138,15 +91,10 @@ app.UseAuthentication();
 
 app.UseAuthorization();
 
-// =======================================================
-// PUBLIC HEALTH CHECK
-// =======================================================
-
 app.MapGet(
     "/",
     () =>
-    {
-        return Results.Ok(
+        Results.Ok(
             new
             {
                 service =
@@ -158,14 +106,17 @@ app.MapGet(
                 authentication =
                     "Microsoft Entra ID",
 
+                authoritativeEndpoint =
+                    "/api/fulfillment/orders/{reference}/calculate",
+
+                simulationEndpoint =
+                    app.Environment.IsDevelopment()
+                        ? "/api/fulfillment/simulate"
+                        : "Disabled",
+
                 timestampUtc =
                     DateTime.UtcNow
-            });
-    });
-
-// =======================================================
-// AUTHENTICATED USER / CLAIMS CHECK
-// =======================================================
+            }));
 
 app.MapGet(
     "/api/auth/me",
@@ -177,26 +128,18 @@ app.MapGet(
 
         var roles =
             user.Claims
-                .Where(claim =>
-                    claim.Type == "roles"
-                    ||
-                    claim.Type.EndsWith(
-                        "/claims/role",
-                        StringComparison.OrdinalIgnoreCase))
-                .Select(claim =>
-                    claim.Value)
-                .Distinct()
-                .ToArray();
-
-        var scopes =
-            user.Claims
-                .Where(claim =>
-                    claim.Type == "scp")
-                .SelectMany(claim =>
-                    claim.Value.Split(
-                        ' ',
-                        StringSplitOptions
-                            .RemoveEmptyEntries))
+                .Where(
+                    claim =>
+                        claim.Type ==
+                        "roles"
+                        ||
+                        claim.Type.EndsWith(
+                            "/claims/role",
+                            StringComparison
+                                .OrdinalIgnoreCase))
+                .Select(
+                    claim =>
+                        claim.Value)
                 .Distinct()
                 .ToArray();
 
@@ -212,63 +155,65 @@ app.MapGet(
                     user.Identity
                         ?.Name,
 
-                roles,
-
-                scopes
+                roles
             });
     })
     .RequireAuthorization();
 
-// =======================================================
-// MANUAL FULFILLMENT CALCULATION
-// =======================================================
-
-app.MapPost(
-    "/api/fulfillment/calculate",
-    (
-        CalculateFulfillmentRequest request,
-        FulfillmentScorer scorer) =>
-    {
-        try
+if (app.Environment.IsDevelopment())
+{
+    app.MapPost(
+        "/api/fulfillment/simulate",
+        (
+            CalculateFulfillmentRequest request,
+            FulfillmentScorer scorer,
+            DecisionAuditService auditService) =>
         {
-            var policy =
-                request.Policy
-                ?? new RoutingPolicy();
+            try
+            {
+                var policy =
+                    request.Policy
+                    ?? new RoutingPolicy();
 
-            var decision =
-                scorer.Calculate(
-                    request.OrderReference,
-                    request.Items,
-                    request.Candidates,
-                    policy);
+                var decision =
+                    scorer.Calculate(
+                        request.OrderReference,
+                        request.Items,
+                        request.Candidates,
+                        policy);
 
-            return Results.Ok(
-                decision);
-        }
-        catch (ArgumentException exception)
-        {
-            return Results.BadRequest(
-                new
-                {
-                    message =
-                        exception.Message
-                });
-        }
-    })
-    .RequireAuthorization(
-        "FulfillmentManagerOrAdmin");
+                var snapshot =
+                    auditService
+                        .CreateSnapshot(
+                            decision,
+                            request.Items,
+                            DecisionSource
+                                .ClientProvidedSimulation);
 
-// =======================================================
-// LIVE ORDER FULFILLMENT CALCULATION
-//
-// React
-//   -> Entra access token
-//   -> FulfillmentService
-//   -> OrderService
-//   -> InventoryService
-//   -> FulfillmentScorer
-//   -> recommendation
-// =======================================================
+                auditService.Record(
+                    snapshot);
+
+                return Results.Ok(
+                    DecisionResponse
+                        .Simulation(
+                            decision));
+            }
+            catch (ArgumentException exception)
+            {
+                return Results.BadRequest(
+                    new
+                    {
+                        message =
+                            exception.Message,
+
+                        authoritative =
+                            false
+                    });
+            }
+        })
+        .RequireAuthorization(
+            "FulfillmentManagerOrAdmin");
+}
 
 app.MapPost(
     "/api/fulfillment/orders/{reference}/calculate",
@@ -288,18 +233,14 @@ app.MapPost(
                 });
         }
 
-        var normalizedReference =
-            reference
-                .Trim()
-                .ToUpperInvariant();
-
         try
         {
             var decision =
                 await orchestrator
                     .CalculateForOrderAsync(
-                        normalizedReference,
-                        policy: null,
+                        reference,
+                        policy:
+                            null,
                         cancellationToken);
 
             if (decision is null)
@@ -313,7 +254,9 @@ app.MapPost(
             }
 
             return Results.Ok(
-                decision);
+                DecisionResponse
+                    .AuthoritativeDecision(
+                        decision));
         }
         catch (ArgumentException exception)
         {
@@ -340,8 +283,7 @@ app.MapPost(
                     "Dependent service unavailable",
 
                 detail:
-                    "OrderService or InventoryService " +
-                    "could not be reached.",
+                    "OrderService or InventoryService could not be reached.",
 
                 statusCode:
                     StatusCodes
@@ -354,9 +296,7 @@ app.MapPost(
                     "Dependent service timeout",
 
                 detail:
-                    "OrderService or InventoryService " +
-                    "did not respond within the " +
-                    "configured timeout.",
+                    "OrderService or InventoryService did not respond within the configured timeout.",
 
                 statusCode:
                     StatusCodes
@@ -366,8 +306,52 @@ app.MapPost(
     .RequireAuthorization(
         "FulfillmentManagerOrAdmin");
 
-// =======================================================
-// RUN
-// =======================================================
-
 app.Run();
+
+static Uri GetRequiredServiceUri(
+    IConfiguration configuration,
+    string key)
+{
+    var rawValue =
+        configuration[key];
+
+    if (string.IsNullOrWhiteSpace(
+            rawValue))
+    {
+        throw new InvalidOperationException(
+            $"Required service URL '{key}' is missing.");
+    }
+
+    if (!Uri.TryCreate(
+            rawValue,
+            UriKind.Absolute,
+            out var uri))
+    {
+        throw new InvalidOperationException(
+            $"Service URL '{key}' must be an absolute URI.");
+    }
+
+    var localDevelopmentUri =
+        uri.Scheme ==
+        Uri.UriSchemeHttp
+        &&
+        (
+            uri.Host.Equals(
+                "localhost",
+                StringComparison.OrdinalIgnoreCase)
+            ||
+            uri.Host.Equals(
+                "127.0.0.1",
+                StringComparison.OrdinalIgnoreCase)
+        );
+
+    if (uri.Scheme != Uri.UriSchemeHttps
+        &&
+        !localDevelopmentUri)
+    {
+        throw new InvalidOperationException(
+            $"Service URL '{key}' must use HTTPS unless it targets localhost.");
+    }
+
+    return uri;
+}

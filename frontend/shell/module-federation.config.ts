@@ -2,64 +2,85 @@ import {
   createModuleFederationConfig,
 } from "@module-federation/vite";
 
-export default createModuleFederationConfig({
-  name:
-    "fulfilliq_shell",
+import type {
+  TrustedRemoteEntries,
+} from "./federation/trustedRemotes.js";
 
-  remotes: {
-    order_mfe: {
-      type:
-        "module",
+export function createShellFederationConfig(
+  remoteEntries: TrustedRemoteEntries,
+) {
+  return createModuleFederationConfig({
+    name:
+      "fulfilliq_shell",
 
-      name:
-        "order_mfe",
+    remotes: {
+      order_mfe: {
+        type:
+          "module",
 
-      entry:
-        "http://localhost:5174/remoteEntry.js",
+        name:
+          "order_mfe",
+
+        entry:
+          remoteEntries.order_mfe,
+      },
+
+      fulfillment_mfe: {
+        type:
+          "module",
+
+        name:
+          "fulfillment_mfe",
+
+        entry:
+          remoteEntries
+            .fulfillment_mfe,
+      },
+
+      manager_mfe: {
+        type:
+          "module",
+
+        name:
+          "manager_mfe",
+
+        entry:
+          remoteEntries.manager_mfe,
+      },
     },
 
-    fulfillment_mfe: {
-      type:
-        "module",
+    shared: {
+      react: {
+        singleton:
+          true,
 
-      name:
-        "fulfillment_mfe",
+        strictVersion:
+          true,
+      },
 
-      entry:
-        "http://localhost:5175/remoteEntry.js",
+      "react-dom": {
+        singleton:
+          true,
+
+        strictVersion:
+          true,
+      },
+
+      "react/": {
+        singleton:
+          true,
+
+        strictVersion:
+          true,
+      },
+
+      "react-dom/": {
+        singleton:
+          true,
+
+        strictVersion:
+          true,
+      },
     },
-
-    manager_mfe: {
-      type:
-        "module",
-
-      name:
-        "manager_mfe",
-
-      entry:
-        "http://localhost:5176/remoteEntry.js",
-    },
-  },
-
-  shared: {
-    react: {
-      singleton:
-        true,
-    },
-
-    "react-dom": {
-      singleton:
-        true,
-    },
-
-    "react/": {
-      singleton:
-        true,
-    },
-
-    "react-dom/": {
-      singleton:
-        true,
-    },
-  },
-});
+  });
+}

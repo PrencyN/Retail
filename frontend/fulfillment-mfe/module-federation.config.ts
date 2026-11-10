@@ -21,20 +21,32 @@ export default createModuleFederationConfig({
     react: {
       singleton:
         true,
+
+      strictVersion:
+        true,
     },
 
     "react-dom": {
       singleton:
+        true,
+
+      strictVersion:
         true,
     },
 
     "react/": {
       singleton:
         true,
+
+      strictVersion:
+        true,
     },
 
     "react-dom/": {
       singleton:
+        true,
+
+      strictVersion:
         true,
     },
   },
