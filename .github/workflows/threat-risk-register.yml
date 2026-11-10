@@ -46,7 +46,7 @@ jobs:
       # =====================================================
 
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -56,7 +56,7 @@ jobs:
       # =====================================================
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -110,7 +110,7 @@ jobs:
       # =====================================================
 
       - name: Install Trivy
-        uses: aquasecurity/setup-trivy@v0.3.1
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
         with:
           version: v${{ env.TRIVY_VERSION }}
           cache: true
@@ -178,7 +178,7 @@ jobs:
       # =====================================================
       # PULL REQUEST THREAT MODEL
       #
-      # No Azure OpenAI secrets are supplied to PR execution.
+      # No Azure OpenAI secrets are supplied to pull requests.
       # =====================================================
 
       - name: Run threat model for pull request
@@ -194,8 +194,8 @@ jobs:
       # =====================================================
       # TRUSTED MASTER / MANUAL THREAT MODEL
       #
-      # Azure OpenAI secrets are provided only to trusted
-      # branch/manual execution.
+      # Azure OpenAI secrets are supplied only to trusted
+      # master/manual execution.
       # =====================================================
 
       - name: Run threat model for trusted branch
@@ -340,6 +340,10 @@ jobs:
                   "- Workbook commits occur only "
                   "after trusted master pushes."
               ),
+              (
+                  "- External GitHub Actions are "
+                  "pinned to immutable commit SHAs."
+              ),
           ]
 
           Path(
@@ -359,7 +363,7 @@ jobs:
 
       - name: Upload threat-model artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: threat-risk-register-${{ github.run_id }}
           if-no-files-found: warn
@@ -399,8 +403,8 @@ jobs:
   # =========================================================
   # COMMIT UPDATED WORKBOOK
   #
-  # This job never runs for pull requests.
-  # It is the only job with contents: write.
+  # Never executes for a pull request.
+  # This is the only job granted contents: write.
   # =========================================================
 
   commit-register:
@@ -427,7 +431,7 @@ jobs:
       # =====================================================
 
       - name: Check out trusted master branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           ref: master
@@ -435,15 +439,10 @@ jobs:
 
       # =====================================================
       # PYTHON FOR WORKBOOK VALIDATION
-      #
-      # This fixes:
-      #
-      # ModuleNotFoundError:
-      # No module named 'openpyxl'
       # =====================================================
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -461,7 +460,7 @@ jobs:
       # =====================================================
 
       - name: Download generated risk register
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: threat-risk-register-${{ github.run_id }}
           path: .
