@@ -12,42 +12,62 @@ import {
 import moduleFederationConfig
   from "./module-federation.config.ts";
 
-export default defineConfig({
-  base:
-    "http://localhost:5175/",
+export default defineConfig(
+  ({
+    command,
+  }) => {
+    const isDevelopment =
+      command === "serve";
 
-  plugins: [
-    react(),
+    return {
+      /*
+       * Development:
+       * The shell consumes this MFE from localhost:5175.
+       *
+       * Production:
+       * Use the hosting site's own origin so Cloudflare
+       * Pages can serve remoteEntry.js and generated
+       * Module Federation chunks correctly.
+       */
+      base:
+        isDevelopment
+          ? "http://localhost:5175/"
+          : "/",
 
-    federation(
-      moduleFederationConfig
-    ),
-  ],
+      plugins: [
+        react(),
 
-  server: {
-    port:
-      5175,
+        federation(
+          moduleFederationConfig
+        ),
+      ],
 
-    strictPort:
-      true,
+      server: {
+        port:
+          5175,
 
-    origin:
-      "http://localhost:5175",
+        strictPort:
+          true,
 
-    cors:
-      true,
-  },
+        origin:
+          "http://localhost:5175",
 
-  preview: {
-    port:
-      5175,
+        cors:
+          true,
+      },
 
-    strictPort:
-      true,
-  },
+      preview: {
+        port:
+          5175,
 
-  build: {
-    target:
-      "chrome89",
-  },
-});
+        strictPort:
+          true,
+      },
+
+      build: {
+        target:
+          "chrome89",
+      },
+    };
+  }
+);
