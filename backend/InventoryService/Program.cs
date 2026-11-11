@@ -81,7 +81,8 @@ builder.Services.AddCors(
             {
                 policy
                     .WithOrigins(
-                        "http://localhost:5173")
+                        "http://localhost:5173",
+                        "https://fulfilliq-shell.pages.dev")
                     .AllowAnyHeader()
                     .AllowAnyMethod();
             });
