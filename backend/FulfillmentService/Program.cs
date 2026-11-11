@@ -50,7 +50,7 @@ builder.Services.AddHttpClient<
                 "Services:OrderService");
 
         client.Timeout =
-            TimeSpan.FromSeconds(5);
+            TimeSpan.FromSeconds(30);
     });
 
 builder.Services.AddHttpClient<
@@ -63,7 +63,7 @@ builder.Services.AddHttpClient<
                 "Services:InventoryService");
 
         client.Timeout =
-            TimeSpan.FromSeconds(5);
+            TimeSpan.FromSeconds(30);
     });
 
 builder.Services.AddCors(
